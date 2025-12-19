@@ -19,18 +19,31 @@
             </div>
         </div>
 
-        <!-- Small Card - Top Right -->
-        <div class="card stats-card Left shadow-sm border-0">
-            <div class="card-body text-center d-flex flex-column justify-content-center">
-                <div class="card-icon mx-auto mb-3">
-                    <i class="bi bi-graph-up"></i>
+        <!-- Value Cards - Top Right (Split into two cards) -->
+        <div class="value-cards-container">
+            <!-- Total Value Card -->
+            <div class="card stats-card small-card shadow-sm border-0">
+                <div class="card-body text-center d-flex flex-column justify-content-center">
+                    <div class="card-icon mx-auto mb-2">
+                        <i class="bi bi-currency-rupee"></i>
+                    </div>
+                    <div class="card-content">
+                        <h6 class="card-subtitle text-muted text-uppercase small fw-bold mb-1">Total Value</h6>
+                        <h3 class="card-value fw-bold mb-1">4,21,50,000</h3>
+                    </div>
                 </div>
-                <div class="card-content">
-                    <h6 class="card-subtitle text-muted text-uppercase small fw-bold mb-2">Total GST</h6>
-                    <h2 class="card-value fw-bold mb-2">78,94,560</h2>
-                    <span class="card-change positive d-flex align-items-center justify-content-center">
-                        <!-- <i class="bi bi-arrow-up me-1"></i> +15.2% -->
-                    </span>
+            </div>
+            
+            <!-- GST Value Card -->
+            <div class="card stats-card small-card shadow-sm border-0">
+                <div class="card-body text-center d-flex flex-column justify-content-center">
+                    <div class="card-icon mx-auto mb-2">
+                        <i class="bi bi-graph-up"></i>
+                    </div>
+                    <div class="card-content">
+                        <h6 class="card-subtitle text-muted text-uppercase small fw-bold mb-1">GST Value</h6>
+                        <h3 class="card-value fw-bold mb-1">78,94,560</h3>
+                    </div>
                 </div>
             </div>
         </div>
@@ -282,6 +295,69 @@
     width: 100%;
     padding: 0;
     margin: 0;
+}
+
+/* Value Cards Container - Two cards side by side */
+.value-cards-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    height: 100%;
+}
+
+.value-cards-container .small-card {
+    flex: 1;
+    min-height: 120px;
+    display: flex;
+    align-items: center;
+}
+
+.value-cards-container .small-card .card-body {
+    padding: 1rem 0.75rem;
+    height: 100%;
+}
+
+.value-cards-container .card-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.2rem;
+}
+
+.value-cards-container .card-icon i {
+    font-size: 1.1rem;
+}
+
+.value-cards-container .card-subtitle {
+    font-size: 0.7rem;
+    letter-spacing: 0.5px;
+}
+
+.value-cards-container .card-value {
+    font-size: 1.4rem;
+    color: #2c3e50;
+    line-height: 1.2;
+}
+
+/* Responsive adjustments for value cards */
+@media (max-width: 768px) {
+    .value-cards-container {
+        flex-direction: row;
+        gap: 0.5rem;
+    }
+    
+    .value-cards-container .card-value {
+        font-size: 1.2rem;
+    }
+    
+    .value-cards-container .card-subtitle {
+        font-size: 0.65rem;
+    }
 }
 </style>
 {% endblock %}
