@@ -1,0 +1,7 @@
+﻿# Python/Django
+__pycache__/
+*.pyc
+db.sqlite3
+user_passwords.json
+*.sqlite3
+.env

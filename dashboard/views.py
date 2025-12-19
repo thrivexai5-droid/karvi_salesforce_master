@@ -171,7 +171,36 @@ class UserEditForm(forms.Form):
 @login_required
 def dashboard_view(request):
     """Main dashboard view - requires authentication"""
-    return render(request, 'dashboard/index.html')
+    from decimal import Decimal
+    
+    # Calculate dynamic values from Invoice model
+    total_value_result = Invoice.objects.aggregate(total=Sum('order_value'))
+    total_value = total_value_result['total'] or Decimal('0')
+    
+    # Calculate GST as 18% of Total Value (using Decimal for precision)
+    gst_rate = Decimal('0.18')
+    gst_value = total_value * gst_rate
+    
+    # Format values for display (Indian number format)
+    def format_indian_currency(amount):
+        """Format number in Indian currency style (e.g., 4,21,50,000)"""
+        if amount == 0:
+            return "0"
+        
+        # Convert to float for formatting, then back to string
+        amount_float = float(amount)
+        amount_str = f"{amount_float:,.0f}"  # No decimal places for currency display
+        
+        return amount_str
+    
+    context = {
+        'total_value': format_indian_currency(total_value),
+        'gst_value': format_indian_currency(gst_value),
+        'total_value_raw': total_value,
+        'gst_value_raw': gst_value,
+    }
+    
+    return render(request, 'dashboard/index.html', context)
 
 @login_required
 def user_management_view(request):

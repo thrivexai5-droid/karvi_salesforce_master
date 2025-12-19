@@ -35,9 +35,9 @@
             <form method="post" class="simple-form" id="inquiry-form">
                 {% csrf_token %}
 
-                <!-- Auto-generated Fields Section -->
+                <!-- Auto-generated Fields Section - Three fields in one row -->
                 {% if is_edit and inquiry_obj %}
-                <div class="form-row">
+                <div class="form-row three-column-row">
                     <div class="form-group">
                         <label for="opportunity-id-display">Opportunity ID</label>
                         <input type="text" id="opportunity-id-display" class="form-control" readonly value="{{ inquiry_obj.opportunity_id }}">
@@ -47,16 +47,14 @@
                         <label for="quote-no-display">Quote Number</label>
                         <input type="text" id="quote-no-display" class="form-control" readonly value="{{ inquiry_obj.quote_no }}">
                     </div>
-                </div>
 
-                <div class="form-row">
                     <div class="form-group">
                         <label for="company-display">Company</label>
                         <input type="text" id="company-display" class="form-control" readonly value="{{ inquiry_obj.company.company.company_name }}">
                     </div>
                 </div>
                 {% else %}
-                <div class="form-row">
+                <div class="form-row three-column-row">
                     <div class="form-group">
                         <label for="opportunity-id-display">Opportunity ID</label>
                         <input type="text" id="opportunity-id-display" class="form-control" readonly placeholder="Will be auto-generated">
@@ -66,9 +64,7 @@
                         <label for="quote-no-display">Quote Number</label>
                         <input type="text" id="quote-no-display" class="form-control" readonly placeholder="Will be auto-generated">
                     </div>
-                </div>
 
-                <div class="form-row">
                     <div class="form-group">
                         <label for="company-display">Company</label>
                         <input type="text" id="company-display" class="form-control" readonly placeholder="Select customer first">
@@ -137,8 +133,8 @@
                     </div>
                 </div>
 
-                <!-- Date and Sales Row -->
-                <div class="form-row">
+                <!-- Date, Sales, and Next Date Row - Three fields in one row -->
+                <div class="form-row three-column-row">
                     <div class="form-group">
                         <label for="{{ form.date_of_quote.id_for_label }}">
                             <i class="bi bi-calendar-fill"></i> Date of Quote
@@ -160,10 +156,7 @@
                         {% endif %}
                         <small class="form-text"><i class="bi bi-person"></i> Select sales person from database</small>
                     </div>
-                </div>
 
-                <!-- Next Date and Remarks Row -->
-                <div class="form-row">
                     <div class="form-group">
                         <label for="{{ form.next_date.id_for_label }}">
                             <i class="bi bi-calendar-plus-fill"></i> Next Date
@@ -174,7 +167,10 @@
                         {% endif %}
                         <small class="form-text"><i class="bi bi-calendar-event"></i> Enter next date manually (optional)</small>
                     </div>
+                </div>
 
+                <!-- Remarks Row -->
+                <div class="form-row single-column">
                     <div class="form-group">
                         <label for="{{ form.remarks.id_for_label }}">
                             <i class="bi bi-chat-text-fill"></i> Remarks
@@ -521,6 +517,12 @@
     grid-template-columns: 1fr;
 }
 
+/* Three-column layout for Opportunity ID, Quote Number, Company */
+.simple-form .form-row.three-column-row {
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1rem;
+}
+
 .simple-form .form-group {
     margin-bottom: 0;
 }
@@ -599,8 +601,22 @@
 }
 
 /* Responsive adjustments */
+@media (max-width: 992px) {
+    /* Tablet: Three-column row becomes two-column with wrapping */
+    .simple-form .form-row.three-column-row {
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+}
+
 @media (max-width: 768px) {
     .simple-form .form-row {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+    
+    /* Mobile: Three-column row becomes single column (stacked) */
+    .simple-form .form-row.three-column-row {
         grid-template-columns: 1fr;
         gap: 0.5rem;
     }
