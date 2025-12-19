@@ -1,0 +1,83 @@
+{% extends 'dashboard/base.html' %}
+
+{% block body_class %}scrollable-page{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-exclamation-triangle me-2"></i>Delete User
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        <div class="user-avatar-edit mx-auto mb-3" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);">
+                            <div class="avatar-text">{{ user_obj.first_name|first|upper|default:user_obj.username|first|upper }}</div>
+                        </div>
+                        <h5>{{ user_obj.get_full_name|default:user_obj.username }}</h5>
+                        <p class="text-muted">{{ user_obj.email }}</p>
+                    </div>
+                    
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <strong>Warning:</strong> This action cannot be undone. All information related to this user will be permanently deleted.
+                    </div>
+                    
+                    <div class="user-details mb-4">
+                        <h6>User Details:</h6>
+                        <ul class="list-unstyled">
+                            <li><strong>Username:</strong> {{ user_obj.username }}</li>
+                            <li><strong>Email:</strong> {{ user_obj.email }}</li>
+                            <li><strong>Full Name:</strong> {{ user_obj.get_full_name|default:"Not provided" }}</li>
+                            <li><strong>Role:</strong> 
+                                {% if user_obj.userprofile %}
+                                    {{ user_obj.userprofile.get_roles_display }}
+                                {% else %}
+                                    No role assigned
+                                {% endif %}
+                            </li>
+                            <li><strong>Date Joined:</strong> {{ user_obj.date_joined|date:"M d, Y" }}</li>
+                            <li><strong>Last Login:</strong> {{ user_obj.last_login|date:"M d, Y H:i"|default:"Never" }}</li>
+                        </ul>
+                        
+                        {% if user_obj.userprofile %}
+                            <div class="mt-3">
+                                <strong>Form Permissions:</strong>
+                                <div class="permissions-badges mt-2">
+                                    {% if user_obj.userprofile.can_access_invoice_generation %}
+                                        <span class="badge bg-success badge-sm">Invoice Generation</span>
+                                    {% endif %}
+                                    {% if user_obj.userprofile.can_access_inquiry_handler %}
+                                        <span class="badge bg-primary badge-sm">Inquiry Handler</span>
+                                    {% endif %}
+                                    {% if user_obj.userprofile.can_access_quotation_generation %}
+                                        <span class="badge bg-warning badge-sm">Quotation Generation</span>
+                                    {% endif %}
+                                    {% if user_obj.userprofile.can_access_additional_supply %}
+                                        <span class="badge bg-info badge-sm">Additional Supply</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-danger flex-fill">
+                                <i class="bi bi-trash me-2"></i>Yes, Delete User
+                            </button>
+                            <a href="{% url 'dashboard:user_management' %}" class="btn btn-secondary flex-fill">
+                                <i class="bi bi-x-circle me-2"></i>Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

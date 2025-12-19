@@ -1,0 +1,340 @@
+{% extends 'dashboard/base.html' %}
+
+{% block body_class %}scrollable-page{% endblock %}
+
+{% block content %}
+<div class="simple-form-page">
+    <div class="simple-form-wrapper">
+        <!-- Header -->
+        <div class="simple-header">
+            <h3>{{ title }}</h3>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard:purchase_order_management' %}">Purchase Orders</a></li>
+                    <li class="breadcrumb-item active">{{ action }} Order</li>
+                </ol>
+            </nav>
+        </div>
+
+        <!-- Form Container -->
+        <div class="simple-form-container">
+            {% if is_edit and order_obj %}
+                <div class="edit-indicator">
+                    <div class="user-initial">
+                        {{ order_obj.po_number|first|upper }}
+                    </div>
+                    <div>
+                        <strong>Editing PO: {{ order_obj.po_number }}</strong>
+                        <div class="text-muted">Company: {{ order_obj.company.company }} | Value: ₹{{ order_obj.order_value }}</div>
+                    </div>
+                </div>
+            {% endif %}
+
+            <form method="post" class="simple-form" id="po-form">
+                {% csrf_token %}
+                
+                <!-- PO Number and Date Row -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="{{ form.po_number.id_for_label }}">
+                            <i class="bi bi-hash"></i> PO Number *
+                        </label>
+                        {{ form.po_number }}
+                        {% if form.po_number.errors %}
+                            <div class="error-msg">{{ form.po_number.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="{{ form.order_date.id_for_label }}">
+                            <i class="bi bi-calendar"></i> Order Date *
+                        </label>
+                        {{ form.order_date }}
+                        {% if form.order_date.errors %}
+                            <div class="error-msg">{{ form.order_date.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Customer and Company Row -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="{{ form.customer_name_select.id_for_label }}">
+                            <i class="bi bi-person"></i> Customer Name *
+                        </label>
+                        {{ form.customer_name_select }}
+                        {% if form.customer_name_select.errors %}
+                            <div class="error-msg">{{ form.customer_name_select.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="company-display">
+                            <i class="bi bi-building"></i> Company (Auto-filled)
+                        </label>
+                        <input type="text" id="company-display" class="form-control" readonly placeholder="Select customer first">
+                    </div>
+                </div>
+
+                <!-- Value and Manufacturing Days Row -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="{{ form.order_value.id_for_label }}">
+                            <i class="bi bi-currency-rupee"></i> Order Value *
+                        </label>
+                        {{ form.order_value }}
+                        {% if form.order_value.errors %}
+                            <div class="error-msg">{{ form.order_value.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="{{ form.days_to_mfg.id_for_label }}">
+                            <i class="bi bi-clock"></i> Days to Manufacturing *
+                        </label>
+                        {{ form.days_to_mfg }}
+                        {% if form.days_to_mfg.errors %}
+                            <div class="error-msg">{{ form.days_to_mfg.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Calculated Fields Display -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="delivery-date-display">
+                            <i class="bi bi-truck"></i> Delivery Date (Auto-calculated)
+                        </label>
+                        <input type="text" id="delivery-date-display" class="form-control" readonly placeholder="Will be calculated">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="due-days-display">
+                            <i class="bi bi-hourglass"></i> Due Days (Auto-calculated)
+                        </label>
+                        <input type="text" id="due-days-display" class="form-control" readonly placeholder="Will be calculated">
+                    </div>
+                </div>
+
+                <!-- Sales Person and Project Manager Row -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="{{ form.sales_person.id_for_label }}">
+                            <i class="bi bi-person-badge"></i> Sales Person
+                        </label>
+                        {{ form.sales_person }}
+                        {% if form.sales_person.errors %}
+                            <div class="error-msg">{{ form.sales_person.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                      <div class="form-group">
+                        <label for="{{ form.sales_percentage.id_for_label }}">
+                            <i class="bi bi-percent"></i> Sales Percentage (%)
+                        </label>
+                        {{ form.sales_percentage }}
+                        {% if form.sales_percentage.errors %}
+                            <div class="error-msg">{{ form.sales_percentage.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="{{ form.project_manager.id_for_label }}">
+                            <i class="bi bi-person-gear"></i> Project Manager
+                        </label>
+                        {{ form.project_manager }}
+                        {% if form.project_manager.errors %}
+                            <div class="error-msg">{{ form.project_manager.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.project_manager_percentage.id_for_label }}">
+                            <i class="bi bi-percent"></i> Project Manager Percentage (%)
+                        </label>
+                        {{ form.project_manager_percentage }}
+                        {% if form.project_manager_percentage.errors %}
+                            <div class="error-msg">{{ form.project_manager_percentage.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Sales and Project Manager Percentage Row
+                <div class="form-row">
+                  
+                    
+                    
+                </div> -->
+
+                <!-- Remarks -->
+                <div class="form-group">
+                    <label for="{{ form.remarks.id_for_label }}">
+                        <i class="bi bi-chat-text"></i> Remarks
+                    </label>
+                    {{ form.remarks }}
+                    {% if form.remarks.errors %}
+                        <div class="error-msg">{{ form.remarks.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Form Actions -->
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">
+                        <i class="bi bi-check-circle me-2"></i>{{ action }} Purchase Order
+                    </button>
+                    <a href="{% url 'dashboard:purchase_order_management' %}" class="btn-secondary">
+                        <i class="bi bi-x-circle me-2"></i>Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const customerSelect = document.getElementById('{{ form.customer_name_select.id_for_label }}');
+    const companyDisplay = document.getElementById('company-display');
+    const orderDateInput = document.getElementById('{{ form.order_date.id_for_label }}');
+    const mfgDaysInput = document.getElementById('{{ form.days_to_mfg.id_for_label }}');
+    const deliveryDateDisplay = document.getElementById('delivery-date-display');
+    const dueDaysDisplay = document.getElementById('due-days-display');
+
+    // Auto-fill company when customer is selected
+    customerSelect.addEventListener('change', function() {
+        const customerId = this.value;
+        if (customerId) {
+            fetch(`{% url 'dashboard:get_contact_data_ajax' %}?contact_id=${customerId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        companyDisplay.value = data.company_name;
+                        companyDisplay.style.backgroundColor = '#e8f5e8';
+                    } else {
+                        companyDisplay.value = 'Error loading company';
+                        companyDisplay.style.backgroundColor = '#f8d7da';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    companyDisplay.value = 'Error loading company';
+                    companyDisplay.style.backgroundColor = '#f8d7da';
+                });
+        } else {
+            companyDisplay.value = '';
+            companyDisplay.style.backgroundColor = '';
+        }
+        calculateDates();
+    });
+
+    // Calculate delivery date and due days
+    function calculateDates() {
+        const orderDate = orderDateInput.value;
+        const mfgDays = parseInt(mfgDaysInput.value);
+        
+        if (orderDate && mfgDays && mfgDays > 0) {
+            // Calculate delivery date
+            const orderDateObj = new Date(orderDate);
+            const deliveryDateObj = new Date(orderDateObj);
+            deliveryDateObj.setDate(deliveryDateObj.getDate() + mfgDays);
+            
+            // Format delivery date
+            const deliveryDateStr = deliveryDateObj.toLocaleDateString('en-GB', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
+            });
+            deliveryDateDisplay.value = deliveryDateStr;
+            deliveryDateDisplay.style.backgroundColor = '#e3f2fd';
+            
+            // Calculate due days (difference from today)
+            const today = new Date();
+            today.setHours(0, 0, 0, 0); // Set to midnight for accurate day counting
+            deliveryDateObj.setHours(0, 0, 0, 0);
+            
+            const timeDiff = deliveryDateObj - today;
+            const dueDays = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+            
+            if (dueDays > 0) {
+                dueDaysDisplay.value = `${dueDays} days remaining`;
+                dueDaysDisplay.style.backgroundColor = '#d4edda';
+                dueDaysDisplay.style.color = '#155724';
+            } else if (dueDays === 0) {
+                dueDaysDisplay.value = 'Due today';
+                dueDaysDisplay.style.backgroundColor = '#fff3cd';
+                dueDaysDisplay.style.color = '#856404';
+            } else {
+                dueDaysDisplay.value = `${Math.abs(dueDays)} days overdue`;
+                dueDaysDisplay.style.backgroundColor = '#f8d7da';
+                dueDaysDisplay.style.color = '#721c24';
+            }
+        } else {
+            deliveryDateDisplay.value = '';
+            dueDaysDisplay.value = '';
+            deliveryDateDisplay.style.backgroundColor = '';
+            dueDaysDisplay.style.backgroundColor = '';
+        }
+    }
+
+    // Add event listeners for date calculations
+    orderDateInput.addEventListener('change', calculateDates);
+    mfgDaysInput.addEventListener('input', calculateDates);
+
+    // Initialize if editing existing order
+    {% if is_edit and order_obj %}
+        companyDisplay.value = '{{ order_obj.company.company }}';
+        companyDisplay.style.backgroundColor = '#e8f5e8';
+        calculateDates();
+    {% endif %}
+
+    // Trigger initial calculation if form has values
+    if (customerSelect.value) {
+        customerSelect.dispatchEvent(new Event('change'));
+    }
+});
+</script>
+
+<style>
+/* Purchase Order Form Specific Styles */
+.simple-form-page .form-group input[readonly] {
+    background-color: #f8f9fa;
+    border-color: #dee2e6;
+    color: #6c757d;
+}
+
+.simple-form-page .form-group input[readonly]:focus {
+    box-shadow: none;
+    border-color: #dee2e6;
+}
+
+.edit-indicator {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    border-left-color: #2196f3;
+}
+
+.user-initial {
+    background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
+}
+
+/* Status color indicators */
+.form-control[style*="background-color: #e8f5e8"] {
+    border-color: #28a745 !important;
+}
+
+.form-control[style*="background-color: #f8d7da"] {
+    border-color: #dc3545 !important;
+}
+
+.form-control[style*="background-color: #e3f2fd"] {
+    border-color: #007bff !important;
+}
+
+.form-control[style*="background-color: #d4edda"] {
+    border-color: #28a745 !important;
+}
+
+.form-control[style*="background-color: #fff3cd"] {
+    border-color: #ffc107 !important;
+}
+</style>
+{% endblock %}

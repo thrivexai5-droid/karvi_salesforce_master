@@ -1,0 +1,216 @@
+{% extends 'dashboard/base.html' %}
+
+{% block body_class %}scrollable-page{% endblock %}
+
+{% block content %}
+<div class="user-management-container">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div>
+            <h2 class="page-title">Invoice Generation</h2>
+            <p class="page-subtitle">Manage invoices and track payment schedules</p>
+        </div>
+        <a href="{% url 'dashboard:invoice_create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-2"></i>Create New Invoice
+        </a>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
+                <i class="bi bi-receipt"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ total_invoices }}</h3>
+                <p>Total Invoices</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                <i class="bi bi-currency-dollar"></i>
+            </div>
+            <div class="stat-content">
+                <h3>₹{{ total_value|floatformat:0 }}</h3>
+                <p>Total Value</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                <i class="bi bi-clock"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ due_today }}</h3>
+                <p>Due Today</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
+                <i class="bi bi-exclamation-triangle"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ overdue_invoices }}</h3>
+                <p>Overdue</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Section -->
+    <div class="search-section">
+        <div class="d-flex gap-3 align-items-center">
+            <form method="GET" class="search-input-group flex-grow-1">
+                <i class="bi bi-search"></i>
+                <input type="text" name="search" class="form-control" placeholder="Search by invoice number, company, customer, or PO number..." value="{{ search_query }}">
+                <button type="submit" class="btn btn-outline-primary">Search</button>
+                {% if search_query %}
+                    <a href="{% url 'dashboard:invoice_management' %}" class="btn btn-outline-secondary">Clear</a>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+
+    <!-- Invoices Table -->
+    <div class="table-container">
+        <div class="table-header">
+            <h5 class="mb-0">Invoices</h5>
+            <span class="text-muted">{{ page_obj.paginator.count }} invoice{{ page_obj.paginator.count|pluralize }}</span>
+        </div>
+        
+        {% if page_obj %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>No</th>
+                            <th>Invoice Number</th>
+                            <th>Invoice Date</th>
+                            <th>Company</th>
+                            <th>Customer</th>
+                            <th>PO Number</th>
+                            <th>Value</th>
+                            <th>GRN Date</th>
+                            <th>Payment Due</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for invoice in page_obj %}
+                            <tr>
+                                <td>
+                                    <div class="index-number">
+                                        <strong>{{ forloop.counter0|add:page_obj.start_index }}</strong>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="fw-semibold">{{ invoice.invoice_number }}</div>
+                                </td>
+                                <td>{{ invoice.invoice_date|date:"M d, Y" }}</td>
+                                <td>
+                                    <div class="fw-semibold">{{ invoice.company.company }}</div>
+                                    <small class="text-muted">{{ invoice.company.plant }}</small>
+                                </td>
+                                <td>{{ invoice.customer_name }}</td>
+                                <td>
+                                    <div class="fw-semibold">{{ invoice.purchase_order.po_number }}</div>
+                                </td>
+                                <td>
+                                    <div class="fw-semibold">₹{{ invoice.order_value|floatformat:0 }}</div>
+                                </td>
+                                <td>{{ invoice.grn_date|date:"M d, Y" }}</td>
+                                <td>
+                                    <div>{{ invoice.payment_due_date|date:"M d, Y" }}</div>
+                                    {% if invoice.due_days is not None %}
+                                        <small class="text-muted">
+                                            {{ invoice.get_due_days_display }}
+                                        </small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if invoice.due_days is not None %}
+                                        {% if invoice.due_days > 7 %}
+                                            <span class="badge" style="background-color: #22c55e; color: white;">{{ invoice.due_days }} days</span>
+                                        {% elif invoice.due_days > 0 %}
+                                            <span class="badge" style="background-color: #f97316; color: white;">{{ invoice.due_days }} days</span>
+                                        {% elif invoice.due_days == 0 %}
+                                            <span class="badge" style="background-color: #f59e0b; color: white;">Due Today</span>
+                                        {% else %}
+                                            <span class="badge" style="background-color: #ef4444; color: white;">{{ invoice.due_days|stringformat:"d"|slice:"1:" }} overdue</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="badge bg-secondary">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <a href="{% url 'dashboard:invoice_edit' invoice.id %}" class="btn btn-sm btn-outline-primary" title="Edit">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <a href="{% url 'dashboard:invoice_delete' invoice.id %}" class="btn btn-sm btn-outline-danger" title="Delete">
+                                            <i class="bi bi-trash"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if page_obj.has_other_pages %}
+                <div class="pagination-container">
+                    <nav aria-label="Invoice pagination">
+                        <ul class="pagination justify-content-center mb-0">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}">First</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">Previous</a>
+                                </li>
+                            {% endif %}
+
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ num }}</span>
+                                    </li>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}">{{ num }}</a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">Next</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}">Last</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+            {% endif %}
+        {% else %}
+            <div class="empty-state">
+                <i class="bi bi-receipt text-muted"></i>
+                <h4 class="text-muted">No invoices found</h4>
+                <p class="text-muted">
+                    {% if search_query %}
+                        No invoices match your search criteria.
+                    {% else %}
+                        Start by creating your first invoice.
+                    {% endif %}
+                </p>
+                <a href="{% url 'dashboard:invoice_create' %}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle me-2"></i>Create New Invoice
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

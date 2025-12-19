@@ -1,0 +1,248 @@
+{% extends 'dashboard/base.html' %}
+
+{% block body_class %}simple-form-page{% endblock %}
+
+{% block content %}
+<div class="simple-form-wrapper">
+    <!-- Simple Header -->
+    <div class="simple-header">
+        <h3>{{ title }}</h3>
+        <a href="{% url 'dashboard:user_management' %}" class="btn btn-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Back
+        </a>
+    </div>
+
+    <!-- Simple Form -->
+    <div class="simple-form-container">
+        {% if user_obj %}
+            <div class="edit-indicator">
+                <span class="user-initial">{{ user_obj.first_name|first|upper|default:user_obj.username|first|upper }}</span>
+                <span>Editing: {{ user_obj.get_full_name|default:user_obj.username }}</span>
+            </div>
+        {% endif %}
+
+        <form method="post" class="simple-form">
+            {% csrf_token %}
+            
+            <!-- Basic Fields -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Full Name *</label>
+                    {{ form.name }}
+                    {% if form.name.errors %}
+                        <div class="error-msg">{{ form.name.errors.0 }}</div>
+                    {% endif %}
+                </div>
+                
+                <div class="form-group">
+                    <label>Email Address *</label>
+                    {{ form.email }}
+                    {% if form.email.errors %}
+                        <div class="error-msg">{{ form.email.errors.0 }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Password {% if not is_edit %}*{% endif %}</label>
+                    <div class="password-group">
+                        {% if is_edit %}
+                            <input type="text" class="form-control" name="password" id="password-field" value="{{ current_password|default:'Password@123' }}">
+                        {% else %}
+                            <input type="text" class="form-control" name="password" id="password-field" placeholder="Enter password" required>
+                        {% endif %}
+                        <button type="button" class="password-btn" id="password-toggle">
+                            <i class="bi bi-eye-slash" id="password-icon"></i>
+                        </button>
+                    </div>
+                    {% if form.password.errors %}
+                        <div class="error-msg">{{ form.password.errors.0 }}</div>
+                    {% endif %}
+                </div>
+                
+                <div class="form-group">
+                    <label>Role *</label>
+                    {{ form.role }}
+                    {% if form.role.errors %}
+                        <div class="error-msg">{{ form.role.errors.0 }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Permissions -->
+            <div class="permissions-section">
+                <label>Form Permissions</label>
+                <div class="permissions-grid" id="simple-permissions">
+                    <div class="permission-item">
+                        <input type="checkbox" name="form_permissions" value="invoice_generation" id="perm_invoice">
+                        <label for="perm_invoice">Invoice Generation</label>
+                    </div>
+                    <div class="permission-item">
+                        <input type="checkbox" name="form_permissions" value="inquiry_handler" id="perm_inquiry">
+                        <label for="perm_inquiry">Inquiry Handler</label>
+                    </div>
+                    <div class="permission-item">
+                        <input type="checkbox" name="form_permissions" value="quotation_generation" id="perm_quotation">
+                        <label for="perm_quotation">Quotation Generation</label>
+                    </div>
+                    <div class="permission-item">
+                        <input type="checkbox" name="form_permissions" value="additional_supply" id="perm_additional">
+                        <label for="perm_additional">Additional Supply</label>
+                    </div>
+                </div>
+                {% if form.form_permissions.errors %}
+                    <div class="error-msg">{{ form.form_permissions.errors.0 }}</div>
+                {% endif %}
+            </div>
+
+            <!-- Actions -->
+            <div class="form-actions">
+                <button type="submit" class="btn-primary">{{ action }} User</button>
+                <a href="{% url 'dashboard:user_management' %}" class="btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const roleSelect = document.getElementById('{{ form.role.id_for_label }}');
+    const simplePermissions = document.getElementById('simple-permissions');
+    
+    // Define role-based permissions
+    const rolePermissions = {
+        'sales': ['invoice_generation', 'inquiry_handler', 'quotation_generation'],
+        'project_manager': ['additional_supply']
+    };
+    
+    function updateFormPermissions() {
+        const selectedRole = roleSelect.value;
+        const allowedPermissions = rolePermissions[selectedRole] || [];
+        
+        // Get all checkboxes
+        const checkboxes = simplePermissions.querySelectorAll('input[type="checkbox"]');
+        
+        checkboxes.forEach(function(checkbox) {
+            const permissionValue = checkbox.value;
+            const isAllowed = allowedPermissions.includes(permissionValue);
+            
+            // Enable/disable checkbox based on role
+            checkbox.disabled = !isAllowed;
+            
+            // Uncheck disabled checkboxes
+            if (!isAllowed && checkbox.checked) {
+                checkbox.checked = false;
+            }
+            
+            // Update visual styling for permission item
+            const permissionItem = checkbox.closest('.permission-item');
+            if (permissionItem) {
+                if (isAllowed) {
+                    permissionItem.style.opacity = '1';
+                } else {
+                    permissionItem.style.opacity = '0.5';
+                }
+            }
+        });
+    }
+    
+    // Update permissions when role changes
+    roleSelect.addEventListener('change', updateFormPermissions);
+    
+    // Initialize on page load
+    updateFormPermissions();
+    
+    // Add form validation feedback
+    const form = document.querySelector('.simple-form');
+    const inputs = form.querySelectorAll('input[required], select[required]');
+    
+    inputs.forEach(function(input) {
+        input.addEventListener('blur', function() {
+            if (this.value.trim() !== '') {
+                this.classList.add('is-valid');
+                this.classList.remove('is-invalid');
+            } else {
+                this.classList.add('is-invalid');
+                this.classList.remove('is-valid');
+            }
+        });
+    });
+    
+    // Password visibility toggle functionality
+    const passwordField = document.getElementById('password-field');
+    const passwordToggle = document.getElementById('password-toggle');
+    const passwordIcon = document.getElementById('password-icon');
+    
+    if (passwordToggle && passwordField && passwordIcon) {
+        passwordToggle.addEventListener('click', function() {
+            if (passwordField.type === 'text') {
+                // Hide password
+                passwordField.type = 'password';
+                passwordIcon.className = 'bi bi-eye';
+                passwordToggle.title = 'Show password';
+            } else {
+                // Show password
+                passwordField.type = 'text';
+                passwordIcon.className = 'bi bi-eye-slash';
+                passwordToggle.title = 'Hide password';
+            }
+        });
+    }
+    
+    // Password field special handling
+    if (passwordField) {
+        passwordField.addEventListener('focus', function() {
+            this.placeholder = 'Modify password or leave as current';
+        });
+        
+        // Add password strength indicator for create mode
+        const isCreateMode = !document.querySelector('.edit-indicator');
+        if (isCreateMode) {
+            const strengthDiv = document.createElement('div');
+            strengthDiv.className = 'password-strength';
+            strengthDiv.id = 'password-strength';
+            passwordField.parentNode.parentNode.appendChild(strengthDiv);
+            
+            passwordField.addEventListener('input', function() {
+                const password = this.value;
+                const strengthIndicator = document.getElementById('password-strength');
+                
+                if (password.length === 0) {
+                    strengthIndicator.textContent = '';
+                    strengthIndicator.className = 'password-strength';
+                } else if (password.length < 6) {
+                    strengthIndicator.textContent = 'Password too short (minimum 6 characters)';
+                    strengthIndicator.className = 'password-strength weak';
+                } else if (password.length < 8) {
+                    strengthIndicator.textContent = 'Password strength: Medium';
+                    strengthIndicator.className = 'password-strength medium';
+                } else {
+                    strengthIndicator.textContent = 'Password strength: Strong';
+                    strengthIndicator.className = 'password-strength strong';
+                }
+            });
+        }
+    }
+});
+</script>
+
+{% if is_edit %}
+<script>
+// Pre-populate checkboxes for edit mode
+{% if user_obj.userprofile.can_access_invoice_generation %}
+document.getElementById('perm_invoice').checked = true;
+{% endif %}
+{% if user_obj.userprofile.can_access_inquiry_handler %}
+document.getElementById('perm_inquiry').checked = true;
+{% endif %}
+{% if user_obj.userprofile.can_access_quotation_generation %}
+document.getElementById('perm_quotation').checked = true;
+{% endif %}
+{% if user_obj.userprofile.can_access_additional_supply %}
+document.getElementById('perm_additional').checked = true;
+{% endif %}
+</script>
+{% endif %}
+
+{% endblock %}

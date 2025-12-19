@@ -1,0 +1,55 @@
+{% extends 'dashboard/base.html' %}
+
+{% block body_class %}scrollable-page{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-exclamation-triangle me-2"></i>Delete Contact
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        <div class="user-avatar-edit mx-auto mb-3" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);">
+                            <div class="avatar-text">{{ contact_obj.customer_name|first|upper }}</div>
+                        </div>
+                        <h5>{{ contact_obj.customer_name }}</h5>
+                        <p class="text-muted">{{ contact_obj.company }} - {{ contact_obj.get_plant_display }}</p>
+                    </div>
+                    
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <strong>Warning:</strong> This action cannot be undone. All information related to this contact will be permanently deleted.
+                    </div>
+                    
+                    <div class="contact-details mb-4">
+                        <h6>Contact Details:</h6>
+                        <ul class="list-unstyled">
+                            <li><strong>Email:</strong> {{ contact_obj.email }}</li>
+                            <li><strong>Company:</strong> {{ contact_obj.company }}</li>
+                            <li><strong>Plant:</strong> {{ contact_obj.get_plant_display }}</li>
+                            <li><strong>Address:</strong> {{ contact_obj.address|truncatewords:10 }}</li>
+                        </ul>
+                    </div>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-danger flex-fill">
+                                <i class="bi bi-trash me-2"></i>Yes, Delete Contact
+                            </button>
+                            <a href="{% url 'dashboard:contact_management' %}" class="btn btn-secondary flex-fill">
+                                <i class="bi bi-x-circle me-2"></i>Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

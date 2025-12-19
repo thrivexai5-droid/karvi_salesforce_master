@@ -1,0 +1,132 @@
+{% extends 'dashboard/base.html' %}
+
+{% block body_class %}scrollable-page{% endblock %}
+
+{% block content %}
+<div class="simple-form-page">
+    <div class="simple-form-wrapper">
+        <!-- Header -->
+        <div class="simple-header">
+            <h3>{{ title }}</h3>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard:additional_supply_management' %}">Additional Supply</a></li>
+                    <li class="breadcrumb-item active">{{ action }} Additional Supply</li>
+                </ol>
+            </nav>
+        </div>
+
+        <!-- Form Container -->
+        <div class="simple-form-container">
+            {% if is_edit and inquiry_obj %}
+                <div class="edit-indicator">
+                    <div class="user-initial">
+                        {{ inquiry_obj.create_id|first|upper }}
+                    </div>
+                    <div>
+                        <strong>Editing Additional Supply: {{ inquiry_obj.create_id }}</strong>
+                        <div class="text-muted">Status: GRN | Company: {{ inquiry_obj.company.company }} | Customer: {{ inquiry_obj.customer_name }}</div>
+                    </div>
+                </div>
+            {% endif %}
+
+            <form method="post" class="simple-form" id="additional-supply-form">
+                {% csrf_token %}
+                
+                <!-- Inquiry Information (Read-only) -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Create ID</label>
+                        <input type="text" class="form-control" readonly style="background-color: #f8f9fa; border-color: #dee2e6; color: #6c757d;" value="{{ inquiry_obj.create_id }}">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Opportunity ID</label>
+                        <input type="text" class="form-control" readonly style="background-color: #f8f9fa; border-color: #dee2e6; color: #6c757d;" value="{{ inquiry_obj.opportunity_id }}">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Company</label>
+                        <input type="text" class="form-control" readonly style="background-color: #f8f9fa; border-color: #dee2e6; color: #6c757d;" value="{{ inquiry_obj.company.company }}">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Customer</label>
+                        <input type="text" class="form-control" readonly style="background-color: #f8f9fa; border-color: #dee2e6; color: #6c757d;" value="{{ inquiry_obj.customer_name }}">
+                    </div>
+                </div>
+
+                <!-- <div class="form-row">
+                    <div class="form-group">
+                        <label>Quote Date</label>
+                        <input type="text" class="form-control" readonly style="background-color: #f8f9fa; border-color: #dee2e6; color: #6c757d;" value="{{ inquiry_obj.date_of_quote|date:'M d, Y' }}">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>BA</label>
+                        <input type="text" class="form-control" readonly style="background-color: #f8f9fa; border-color: #dee2e6; color: #6c757d;" value="{{ inquiry_obj.ba }}">
+                    </div>
+                </div> -->
+
+                <!-- Original Remarks (Read-only) -->
+                {% if inquiry_obj.remarks %}
+                <div class="form-row single-column">
+                    <div class="form-group">
+                        <label>Original Remarks</label>
+                        <textarea class="form-control" rows="3" readonly style="background-color: #f8f9fa; border-color: #dee2e6; color: #6c757d;">{{ inquiry_obj.remarks }}</textarea>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Additional Supply Remarks (Editable) -->
+                <div class="form-row single-column">
+                    <div class="form-group">
+                        <label for="{{ form.remarks_add.id_for_label }}">
+                            <i class="bi bi-chat-text-fill"></i> Additional Supply Remarks
+                        </label>
+                        {{ form.remarks_add }}
+                        {% if form.remarks_add.errors %}
+                            <div class="error-msg">{{ form.remarks_add.errors.0 }}</div>
+                        {% endif %}
+                        <small class="form-text"><i class="bi bi-pencil"></i> Enter additional supply remarks manually</small>
+                    </div>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">
+                        <i class="bi bi-check-circle me-2"></i>{{ action }} Additional Supply
+                    </button>
+                    <a href="{% url 'dashboard:additional_supply_management' %}" class="btn-secondary">
+                        <i class="bi bi-x-circle me-2"></i>Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Read-only field styling */
+.form-control[readonly] {
+    background-color: #f8f9fa !important;
+    border-color: #dee2e6 !important;
+    color: #6c757d !important;
+    cursor: not-allowed;
+}
+
+.form-control[readonly]:focus {
+    box-shadow: none !important;
+    border-color: #dee2e6 !important;
+}
+
+/* Make labels for read-only fields look different */
+.form-group:has(.form-control[readonly]) label {
+    color: #6c757d;
+    font-weight: 500;
+}
+</style>
+{% endblock %}

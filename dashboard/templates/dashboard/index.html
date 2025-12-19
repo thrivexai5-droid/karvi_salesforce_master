@@ -1,0 +1,287 @@
+{% extends 'dashboard/base.html' %}
+
+{% block content %}
+<div class="container-fluid p-0 m-0" style="width: 100%; max-width: none;"></div>
+    <div class="dashboard-layout">
+        <!-- Chart 1 - Top Left -->
+        <div class="chart-container shadow-sm">
+            <h6 class="chart-title">Sales Distribution</h6>
+            <div class="chart-wrapper">
+                <div id="apexChart1"></div>
+            </div>
+        </div>
+
+        <!-- Chart 2 - Top Center -->
+        <div class="chart-container shadow-sm">
+            <h6 class="chart-title">User Demographics</h6>
+            <div class="chart-wrapper">
+                <div id="apexChart2"></div>
+            </div>
+        </div>
+
+        <!-- Small Card - Top Right -->
+        <div class="card stats-card Left shadow-sm border-0">
+            <div class="card-body text-center d-flex flex-column justify-content-center">
+                <div class="card-icon mx-auto mb-3">
+                    <i class="bi bi-graph-up"></i>
+                </div>
+                <div class="card-content">
+                    <h6 class="card-subtitle text-muted text-uppercase small fw-bold mb-2">Total GST</h6>
+                    <h2 class="card-value fw-bold mb-2">78,94,560</h2>
+                    <span class="card-change positive d-flex align-items-center justify-content-center">
+                        <!-- <i class="bi bi-arrow-up me-1"></i> +15.2% -->
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chart 3 - Bottom Left -->
+        <div class="chart-container shadow-sm">
+            <h6 class="chart-title">Leads chart</h6>
+            <div class="chart-wrapper">
+                <div id="apexChart3"></div>
+            </div>
+        </div>
+
+        <!-- Empty Space - Bottom Center -->
+        <div class="empty-space"></div>
+
+        <!-- Large Card - Bottom Right -->
+        <div class="card stats-card large-card shadow-sm border-0">
+            <div class="card-body">
+                <h6 class="card-title fw-bold mb-4">Task pandeing</h6>
+                <h5 class="mb-3"></h5>
+                <div class="stats-grid">
+                    <div class="activity-item mb-3 pb-3 border-bottom">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>Purchase Order</strong> 
+                            </div>
+                            <div class="text-muted small">Delivered</div>
+                        </div>
+                    </div>
+                    <div class="activity-item mb-3 pb-3 border-bottom">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>Inquire</strong> 
+                            </div>
+                            <div class="text-muted small">Status Pending</div>
+                        </div>
+                    </div>
+                    <div class="activity-item mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>Quotation</strong> — Sent
+                            </div>
+                            <div class="text-muted small">Delivered</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+    </div>
+</div>
+
+<script>
+    // ApexCharts Configuration
+    document.addEventListener('DOMContentLoaded', function() {
+        
+        // Common chart options
+        const commonOptions = {
+            chart: {
+                type: 'pie',
+                height: 280,
+                animations: {
+                    enabled: true,
+                    easing: 'easeinout',
+                    speed: 800
+                },
+                dropShadow: {
+                    enabled: true,
+                    color: '#000',
+                    top: 18,
+                    left: 7,
+                    blur: 10,
+                    opacity: 0.2
+                }
+            },
+            legend: {
+                position: 'bottom',
+                fontSize: '13px',
+                fontFamily: 'Inter, sans-serif',
+                markers: {
+                    width: 20,
+                    height: 14,
+                    strokeWidth: 0,
+                    strokeColor: '',
+                    fillColors: undefined,
+                    radius: 20,
+                    customHTML: undefined,
+                    onClick: undefined,
+                    offsetX: 0,
+                    offsetY: 0
+                }
+            },
+            tooltip: {
+                enabled: true,
+                theme: 'dark',
+                style: {
+                    fontSize: '14px',
+                    fontFamily: 'Inter, sans-serif'
+                }
+            },
+            plotOptions: {
+                pie: {
+                    donut: {
+                        size: '45%'
+                    }
+                }
+            },
+            dataLabels: {
+                enabled: true,
+                formatter: function (val) {
+                    return val.toFixed(1) + "%"
+                },
+                style: {
+                    fontSize: '12px',
+                    fontFamily: 'Inter, sans-serif',
+                    fontWeight: 'bold',
+                    colors: ['#fff']
+                },
+                dropShadow: {
+                    enabled: true
+                }
+            }
+        };
+
+        // Chart 1 - Sales Distribution
+        const chart1Options = {
+            ...commonOptions,
+            series: [35, 25, 20],
+            labels: ['Sales closed', 'UEOB', 'Collection'],
+            colors: ['#28a745', '#20c997', '#17a2b8']
+        };
+        const chart1 = new ApexCharts(document.querySelector("#apexChart1"), chart1Options);
+        chart1.render();
+
+        // Chart 2 - User Demographics
+        const chart2Options = {
+            ...commonOptions,
+            series: [30, 40, 20],
+            labels: ['Sold', 'Sales Gap', 'Further'],
+            colors: ['#007bff', '#6610f2', '#e83e8c']
+        };
+        const chart2 = new ApexCharts(document.querySelector("#apexChart2"), chart2Options);
+        chart2.render();
+
+        // Chart 3 - Leads chart (Bar Chart)
+        const chart3Options = {
+            chart: {
+                type: 'bar',
+                height: 300,
+                width: '100%',
+                animations: {
+                    enabled: true,
+                    easing: 'easeinout',
+                    speed: 800
+                },
+                dropShadow: {
+                    enabled: true,
+                    color: '#000',
+                    top: 18,
+                    left: 7,
+                    blur: 10,
+                    opacity: 0.2
+                }
+            },
+            series: [{
+                name: 'Leads',
+                data: [45, 30, 15, 10, 17, 9]
+            }],
+            xaxis: {
+                categories: ['Quotation', 'Project Closed', 'Lost', 'GRN', 'Negotiation', 'Dispatch'],
+                labels: {
+                    style: {
+                        fontSize: '12px',
+                        fontFamily: 'Inter, sans-serif'
+                    }
+                }
+            },
+            yaxis: {
+                labels: {
+                    style: {
+                        fontSize: '12px',
+                        fontFamily: 'Inter, sans-serif'
+                    }
+                }
+            },
+            colors: ['#28a745', '#ffc107', '#dc3545', '#6c757d', '#20c997', '#007bff'],
+            plotOptions: {
+                bar: {
+                    distributed: true,
+                    horizontal: false,
+                    columnWidth: '80%',
+                    borderRadius: 4
+                }
+            },
+            dataLabels: {
+                enabled: true,
+                formatter: function (val) {
+                    return val
+                },
+                style: {
+                    fontSize: '12px',
+                    fontFamily: 'Inter, sans-serif',
+                    fontWeight: 'bold',
+                    colors: ['#fff']
+                }
+            },
+            legend: {
+                show: false
+            },
+            tooltip: {
+                enabled: true,
+                theme: 'dark',
+                style: {
+                    fontSize: '14px',
+                    fontFamily: 'Inter, sans-serif'
+                }
+            },
+            grid: {
+                padding: {
+                    left: 10,
+                    right: 10,
+                    top: 10,
+                    bottom: 10
+                }
+            }
+        };
+        const chart3 = new ApexCharts(document.querySelector("#apexChart3"), chart3Options);
+        chart3.render();
+    });
+</script>
+
+<style>
+/* Scoped CSS for Leads chart (apexChart3) full-width rendering */
+#apexChart3 {
+    width: 100% !important;
+}
+
+#apexChart3 .apexcharts-canvas {
+    width: 100% !important;
+}
+
+#apexChart3 .apexcharts-inner {
+    width: 100% !important;
+}
+
+/* Ensure the chart wrapper for bar chart uses full width */
+.chart-container:has(#apexChart3) .chart-wrapper {
+    width: 100%;
+    padding: 0;
+    margin: 0;
+}
+</style>
+{% endblock %}

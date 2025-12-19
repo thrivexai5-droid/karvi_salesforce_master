@@ -1,0 +1,192 @@
+{% extends 'dashboard/base.html' %}
+
+{% block body_class %}scrollable-page inquiry-handler-page{% endblock %}
+
+{% block content %}
+<div class="user-management-container">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div>
+            <h2 class="page-title">Inquiry Handler</h2>
+            <p class="page-subtitle">Manage inquiries and track opportunity progress</p>
+        </div>
+        <a href="{% url 'dashboard:inquiry_handler_create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-2"></i>Create New Inquiry
+        </a>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
+                <i class="bi bi-question-circle"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ total_inquiries }}</h3>
+                <p>Total Inquiries</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                <i class="bi bi-activity"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ active_inquiries }}</h3>
+                <p>Active Inquiries</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                <i class="bi bi-chat-quote"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ quotation_stage }}</h3>
+                <p>In Quotation</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);">
+                <i class="bi bi-check-circle"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ closed_inquiries }}</h3>
+                <p>Closed</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Section -->
+    <div class="search-section">
+        <div class="d-flex gap-3 align-items-center">
+            <form method="GET" class="search-input-group flex-grow-1">
+                <i class="bi bi-search"></i>
+                <input type="text" name="search" class="form-control" placeholder="Search by Quote No, Company, Customer, or Sales..." value="{{ search_query }}">
+                <button type="submit" class="btn btn-outline-primary">Search</button>
+                {% if search_query %}
+                    <a href="{% url 'dashboard:inquiry_handler_management' %}" class="btn btn-outline-secondary">Clear</a>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+
+    <!-- Inquiries Table -->
+    <div class="table-container">
+        <div class="table-header">
+            <h5 class="mb-0">Inquiries</h5>
+            <span class="text-muted">{{ page_obj.paginator.count }} inquir{{ page_obj.paginator.count|pluralize:"y,ies" }}</span>
+        </div>
+        
+        {% if page_obj %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Quote No</th>
+                            <th>Status</th>
+                            <th>Company</th>
+                            <th>Customer</th>
+                            <th>Sales</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for inquiry in page_obj %}
+                            <tr>
+                                <td>
+                                    <div class="index-number">
+                                        <strong>{{ forloop.counter0|add:page_obj.start_index }}</strong>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="fw-semibold">{{ inquiry.quote_no }}</div>
+                                    <small class="text-muted">{{ inquiry.created_at|date:"M d, Y" }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-{{ inquiry.get_status_class }}">{{ inquiry.status }}</span>
+                                </td>
+                                <td>
+                                    <div class="fw-semibold">{{ inquiry.company.company.company_name }}</div>
+                                    <small class="text-muted">{{ inquiry.company.location_city }}</small>
+                                </td>
+                                <td>{{ inquiry.customer_name }}</td>
+                                <td>
+                                    {% if inquiry.sales %}
+                                        {{ inquiry.sales.get_full_name|default:inquiry.sales.username }}
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <a href="{% url 'dashboard:inquiry_handler_edit' inquiry.id %}" class="btn btn-sm btn-outline-primary" title="Edit">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <a href="{% url 'dashboard:inquiry_handler_delete' inquiry.id %}" class="btn btn-sm btn-outline-danger" title="Delete">
+                                            <i class="bi bi-trash"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if page_obj.has_other_pages %}
+                <div class="pagination-container">
+                    <nav aria-label="Inquiry pagination">
+                        <ul class="pagination justify-content-center mb-0">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}">First</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">Previous</a>
+                                </li>
+                            {% endif %}
+
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ num }}</span>
+                                    </li>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}">{{ num }}</a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">Next</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}">Last</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+            {% endif %}
+        {% else %}
+            <div class="empty-state">
+                <i class="bi bi-question-circle text-muted"></i>
+                <h4 class="text-muted">No inquiries found</h4>
+                <p class="text-muted">
+                    {% if search_query %}
+                        No inquiries match your search criteria.
+                    {% else %}
+                        Start by creating your first inquiry.
+                    {% endif %}
+                </p>
+                <a href="{% url 'dashboard:inquiry_handler_create' %}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle me-2"></i>Create New Inquiry
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

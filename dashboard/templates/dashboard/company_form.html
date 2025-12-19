@@ -1,0 +1,108 @@
+{% extends 'dashboard/base.html' %}
+
+{% block body_class %}scrollable-page{% endblock %}
+
+{% block content %}
+<div class="simple-form-page">
+    <div class="simple-form-wrapper">
+        <!-- Header -->
+        <div class="simple-header">
+            <h3>{{ title }}</h3>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard:contact_management' %}">Contacts & Company</a></li>
+                    <li class="breadcrumb-item active">{{ action }} Company</li>
+                </ol>
+            </nav>
+        </div>
+
+        <!-- Form Container -->
+        <div class="simple-form-container">
+            {% if is_edit and company_obj %}
+            <div class="edit-indicator">
+                <div class="user-initial">
+                    <i class="bi bi-building"></i>
+                </div>
+                <div>
+                    <strong>Editing Company: {{ company_obj.company_name }}</strong>
+                    <div class="text-muted">Primary City: {{ company_obj.city_1 }} | Created: {{ company_obj.created_at|date:"M d, Y" }}</div>
+                </div>
+            </div>
+            {% endif %}
+
+            <form method="post" class="simple-form compact-form">
+                {% csrf_token %}
+                
+                <!-- Display non-field errors -->
+                {% if form.non_field_errors %}
+                <div class="alert alert-danger">
+                    {% for error in form.non_field_errors %}
+                        <div><i class="bi bi-exclamation-triangle me-2"></i>{{ error }}</div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- Company Name -->
+                <div class="form-group compact">
+                    <label for="{{ form.company_name.id_for_label }}">
+                        <i class="bi bi-building"></i> Company Name
+                    </label>
+                    {{ form.company_name }}
+                    {% if form.company_name.errors %}
+                    <div class="error-msg">{{ form.company_name.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- City -->
+                <div class="form-group compact">
+                    <label for="{{ form.city_1.id_for_label }}">
+                        <i class="bi bi-geo-alt-fill"></i> City
+                    </label>
+                    {{ form.city_1 }}
+                    {% if form.city_1.errors %}
+                    <div class="error-msg">{{ form.city_1.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Company Address -->
+                <div class="form-group compact">
+                    <label for="{{ form.address_1.id_for_label }}">
+                        <i class="bi bi-house-fill"></i> Company Address
+                    </label>
+                    {{ form.address_1 }}
+                    {% if form.address_1.errors %}
+                    <div class="error-msg">{{ form.address_1.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Form Actions -->
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">
+                        <i class="bi bi-check-circle me-2"></i>{{ action }} Company
+                    </button>
+                    <a href="{% url 'dashboard:contact_management' %}?view=companies" class="btn-secondary">
+                        <i class="bi bi-x-circle me-2"></i>Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Compact form styling */
+.compact-form .form-group.compact {
+    margin-bottom: 1rem;
+}
+
+.compact-form .form-group.compact label {
+    margin-bottom: 0.25rem;
+}
+
+.compact-form .form-group.compact .form-control,
+.compact-form .form-group.compact .form-select {
+    margin-bottom: 0;
+}
+</style>
+{% endblock %}

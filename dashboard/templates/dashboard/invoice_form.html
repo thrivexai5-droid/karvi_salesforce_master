@@ -1,0 +1,373 @@
+{% extends 'dashboard/base.html' %}
+
+{% block body_class %}scrollable-page{% endblock %}
+
+{% block content %}
+<div class="simple-form-page">
+    <div class="simple-form-wrapper">
+        <!-- Header -->
+        <div class="simple-header">
+            <h3>{{ title }}</h3>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard:invoice_management' %}">Invoice Generation</a></li>
+                    <li class="breadcrumb-item active">{{ action }} Invoice</li>
+                </ol>
+            </nav>
+        </div>
+
+        <!-- Form Container -->
+        <div class="simple-form-container">
+            {% if is_edit and invoice_obj %}
+                <div class="edit-indicator">
+                    <div class="user-initial">
+                        {{ invoice_obj.invoice_number|first|upper }}
+                    </div>
+                    <div>
+                        <strong>Editing Invoice: {{ invoice_obj.invoice_number }}</strong>
+                        <div class="text-muted">Company: {{ invoice_obj.company.company }} | Value: ₹{{ invoice_obj.order_value }}</div>
+                    </div>
+                </div>
+            {% endif %}
+
+            <form method="post" class="simple-form" id="invoice-form">
+                {% csrf_token %}
+                
+                <!-- Invoice Number and Date Row -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="{{ form.invoice_number.id_for_label }}">
+                            <i class="bi bi-receipt"></i> Invoice Number *
+                        </label>
+                        {{ form.invoice_number }}
+                        {% if form.invoice_number.errors %}
+                            <div class="error-msg">{{ form.invoice_number.errors.0 }}</div>
+                        {% endif %}
+                        <small class="form-text text-muted">Enter invoice number manually</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="{{ form.invoice_date.id_for_label }}">
+                            <i class="bi bi-calendar"></i> Invoice Date *
+                        </label>
+                        {{ form.invoice_date }}
+                        {% if form.invoice_date.errors %}
+                            <div class="error-msg">{{ form.invoice_date.errors.0 }}</div>
+                        {% endif %}
+                        <small class="form-text text-muted">Enter invoice date manually</small>
+                    </div>
+                </div>
+
+                <!-- Customer and Company Row -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="{{ form.customer_select.id_for_label }}">
+                            <i class="bi bi-person"></i> Customer *
+                        </label>
+                        {{ form.customer_select }}
+                        {% if form.customer_select.errors %}
+                            <div class="error-msg">{{ form.customer_select.errors.0 }}</div>
+                        {% endif %}
+                        <small class="form-text text-muted">Select customer from database</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="company-display">
+                            <i class="bi bi-building"></i> Company (Auto-fetched)
+                        </label>
+                        <input type="text" id="company-display" class="form-control" readonly placeholder="Select customer first">
+                        <small class="form-text text-muted">Auto-fetched based on customer selection</small>
+                    </div>
+                </div>
+
+                <!-- Purchase Order and Value Row -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="{{ form.purchase_order.id_for_label }}">
+                            <i class="bi bi-file-earmark-text"></i> Purchase Order *
+                        </label>
+                        {{ form.purchase_order }}
+                        {% if form.purchase_order.errors %}
+                            <div class="error-msg">{{ form.purchase_order.errors.0 }}</div>
+                        {% endif %}
+                        <small class="form-text text-muted">Select purchase order to auto-fetch value</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="order-value-display">
+                            <i class="bi bi-currency-rupee"></i> Order Value (Auto-fetched)
+                        </label>
+                        <input type="text" id="order-value-display" class="form-control" readonly placeholder="Select purchase order first">
+                        <small class="form-text text-muted">Auto-fetched from selected purchase order</small>
+                    </div>
+                </div>
+
+                <!-- GRN Date -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="{{ form.grn_date.id_for_label }}">
+                            <i class="bi bi-calendar-check"></i> GRN Date *
+                        </label>
+                        {{ form.grn_date }}
+                        {% if form.grn_date.errors %}
+                            <div class="error-msg">{{ form.grn_date.errors.0 }}</div>
+                        {% endif %}
+                        <small class="form-text text-muted">Enter GRN date manually</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="payment-due-display">
+                            <i class="bi bi-calendar-event"></i> Payment Due Date (Auto-calculated)
+                        </label>
+                        <input type="text" id="payment-due-display" class="form-control" readonly placeholder="GRN Date + 15 days">
+                        <small class="form-text text-muted">Auto-calculated: GRN Date + 15 days</small>
+                    </div>
+                </div>
+
+                <!-- Due Days Display -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="due-days-display">
+                            <i class="bi bi-hourglass"></i> Due Days (Auto-calculated)
+                        </label>
+                        <input type="text" id="due-days-display" class="form-control" readonly placeholder="Will be calculated">
+                        <small class="form-text text-muted">Auto-calculated: days remaining (positive) or overdue (negative)</small>
+                    </div>
+                </div>
+
+                <!-- Remarks -->
+                <div class="form-group">
+                    <label for="{{ form.remarks.id_for_label }}">
+                        <i class="bi bi-chat-text"></i> Remarks
+                    </label>
+                    {{ form.remarks }}
+                    {% if form.remarks.errors %}
+                        <div class="error-msg">{{ form.remarks.errors.0 }}</div>
+                    {% endif %}
+                    <small class="form-text text-muted">Enter remarks manually (optional)</small>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">
+                        <i class="bi bi-check-circle me-2"></i>{{ action }} Invoice
+                    </button>
+                    <a href="{% url 'dashboard:invoice_management' %}" class="btn-secondary">
+                        <i class="bi bi-x-circle me-2"></i>Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const customerSelect = document.getElementById('{{ form.customer_select.id_for_label }}');
+    const companyDisplay = document.getElementById('company-display');
+    const purchaseOrderSelect = document.getElementById('{{ form.purchase_order.id_for_label }}');
+    const orderValueDisplay = document.getElementById('order-value-display');
+    const grnDateInput = document.getElementById('{{ form.grn_date.id_for_label }}');
+    const paymentDueDisplay = document.getElementById('payment-due-display');
+    const dueDaysDisplay = document.getElementById('due-days-display');
+
+    // Auto-fill company and purchase orders when customer is selected
+    customerSelect.addEventListener('change', function() {
+        const customerId = this.value;
+        if (customerId) {
+            // First, fetch company name based on customer selection
+            fetch(`{% url 'dashboard:get_contact_data_ajax' %}?contact_id=${customerId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Update company name
+                        companyDisplay.value = data.company_name;
+                        companyDisplay.style.backgroundColor = '#e8f5e8';
+                    } else {
+                        companyDisplay.value = 'Error loading company';
+                        companyDisplay.style.backgroundColor = '#f8d7da';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    companyDisplay.value = 'Error loading company';
+                    companyDisplay.style.backgroundColor = '#f8d7da';
+                });
+            
+            // Then, fetch purchase orders for this customer (using customer_id as company_id)
+            fetch(`{% url 'dashboard:get_purchase_orders_by_contact_ajax' %}?contact_id=${customerId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Update purchase order options
+                        purchaseOrderSelect.innerHTML = '<option value="">Select Purchase Order</option>';
+                        data.purchase_orders.forEach(po => {
+                            const option = document.createElement('option');
+                            option.value = po.id;
+                            option.textContent = `${po.po_number} - ₹${po.order_value} (${po.order_date})`;
+                            purchaseOrderSelect.appendChild(option);
+                        });
+                        
+                        // Clear order value display
+                        orderValueDisplay.value = '';
+                        orderValueDisplay.style.backgroundColor = '';
+                    } else {
+                        purchaseOrderSelect.innerHTML = '<option value="">Error loading purchase orders</option>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    purchaseOrderSelect.innerHTML = '<option value="">Error loading purchase orders</option>';
+                });
+        } else {
+            companyDisplay.value = '';
+            companyDisplay.style.backgroundColor = '';
+            purchaseOrderSelect.innerHTML = '<option value="">Select Purchase Order</option>';
+            orderValueDisplay.value = '';
+            orderValueDisplay.style.backgroundColor = '';
+        }
+    });
+
+    // Auto-fill order value when purchase order is selected
+    purchaseOrderSelect.addEventListener('change', function() {
+        const poId = this.value;
+        if (poId) {
+            fetch(`{% url 'dashboard:get_purchase_order_details_ajax' %}?po_id=${poId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        orderValueDisplay.value = `₹${data.order_value}`;
+                        orderValueDisplay.style.backgroundColor = '#e3f2fd';
+                    } else {
+                        orderValueDisplay.value = 'Error loading value';
+                        orderValueDisplay.style.backgroundColor = '#f8d7da';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    orderValueDisplay.value = 'Error loading value';
+                    orderValueDisplay.style.backgroundColor = '#f8d7da';
+                });
+        } else {
+            orderValueDisplay.value = '';
+            orderValueDisplay.style.backgroundColor = '';
+        }
+    });
+
+    // Calculate payment due date and due days
+    function calculatePaymentDates() {
+        const grnDate = grnDateInput.value;
+        
+        if (grnDate) {
+            // Calculate payment due date (GRN Date + 15 days)
+            const grnDateObj = new Date(grnDate);
+            const paymentDueDateObj = new Date(grnDateObj);
+            paymentDueDateObj.setDate(paymentDueDateObj.getDate() + 15);
+            
+            // Format payment due date
+            const paymentDueDateStr = paymentDueDateObj.toLocaleDateString('en-GB', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
+            });
+            paymentDueDisplay.value = paymentDueDateStr;
+            paymentDueDisplay.style.backgroundColor = '#e3f2fd';
+            
+            // Calculate due days (difference from today)
+            const today = new Date();
+            today.setHours(0, 0, 0, 0); // Set to midnight for accurate day counting
+            paymentDueDateObj.setHours(0, 0, 0, 0);
+            
+            const timeDiff = paymentDueDateObj - today;
+            const dueDays = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+            
+            if (dueDays > 0) {
+                dueDaysDisplay.value = `${dueDays} days remaining`;
+                dueDaysDisplay.style.backgroundColor = '#d4edda';
+                dueDaysDisplay.style.color = '#155724';
+            } else if (dueDays === 0) {
+                dueDaysDisplay.value = 'Due today';
+                dueDaysDisplay.style.backgroundColor = '#fff3cd';
+                dueDaysDisplay.style.color = '#856404';
+            } else {
+                dueDaysDisplay.value = `${Math.abs(dueDays)} days overdue`;
+                dueDaysDisplay.style.backgroundColor = '#f8d7da';
+                dueDaysDisplay.style.color = '#721c24';
+            }
+        } else {
+            paymentDueDisplay.value = '';
+            dueDaysDisplay.value = '';
+            paymentDueDisplay.style.backgroundColor = '';
+            dueDaysDisplay.style.backgroundColor = '';
+        }
+    }
+
+    // Add event listener for GRN date calculations
+    grnDateInput.addEventListener('change', calculatePaymentDates);
+
+    // Initialize if editing existing invoice
+    {% if is_edit and invoice_obj %}
+        companyDisplay.value = '{{ invoice_obj.company.company }}';
+        companyDisplay.style.backgroundColor = '#e8f5e8';
+        orderValueDisplay.value = '₹{{ invoice_obj.order_value }}';
+        orderValueDisplay.style.backgroundColor = '#e3f2fd';
+        calculatePaymentDates();
+    {% endif %}
+
+    // Trigger initial calculation if form has values
+    if (customerSelect.value) {
+        customerSelect.dispatchEvent(new Event('change'));
+    }
+});
+</script>
+
+<style>
+/* Invoice Form Specific Styles */
+.simple-form-page .form-group input[readonly] {
+    background-color: #f8f9fa;
+    border-color: #dee2e6;
+    color: #6c757d;
+}
+
+.simple-form-page .form-group input[readonly]:focus {
+    box-shadow: none;
+    border-color: #dee2e6;
+}
+
+.edit-indicator {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    border-left-color: #2196f3;
+}
+
+.user-initial {
+    background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
+}
+
+/* Status color indicators */
+.form-control[style*="background-color: #e8f5e8"] {
+    border-color: #28a745 !important;
+}
+
+.form-control[style*="background-color: #f8d7da"] {
+    border-color: #dc3545 !important;
+}
+
+.form-control[style*="background-color: #e3f2fd"] {
+    border-color: #007bff !important;
+}
+
+.form-control[style*="background-color: #d4edda"] {
+    border-color: #28a745 !important;
+}
+
+.form-control[style*="background-color: #fff3cd"] {
+    border-color: #ffc107 !important;
+}
+
+.form-text {
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+</style>
+{% endblock %}
