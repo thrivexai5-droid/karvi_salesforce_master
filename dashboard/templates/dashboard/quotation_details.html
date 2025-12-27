@@ -1,0 +1,160 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}Quotation Details - {{ quotation.quote_number }}{% endblock %}
+
+{% block content %}
+<div class="user-management-container">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div>
+            <h2 class="page-title">Quotation Details</h2>
+            <p class="page-subtitle">{{ quotation.quote_number }} - {{ quotation.firm }}</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'dashboard:quotation_download' quotation.id %}" class="btn btn-success">
+                <i class="bi bi-download me-2"></i>Download
+            </a>
+            <a href="{% url 'dashboard:quotation_edit' quotation.id %}" class="btn btn-warning">
+                <i class="bi bi-pencil me-2"></i>Edit
+            </a>
+            <a href="{% url 'dashboard:quotation_management' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-2"></i>Back to Management
+            </a>
+        </div>
+    </div>
+
+    <!-- Quotation Details -->
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Quotation Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-sm-3"><strong>Quote Number:</strong></div>
+                        <div class="col-sm-9">{{ quotation.quote_number }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-3"><strong>Revision:</strong></div>
+                        <div class="col-sm-9">{{ quotation.revision }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-3"><strong>Date:</strong></div>
+                        <div class="col-sm-9">{{ quotation.quotation_date }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-3"><strong>To Person:</strong></div>
+                        <div class="col-sm-9">{{ quotation.to_person }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-3"><strong>Company:</strong></div>
+                        <div class="col-sm-9">{{ quotation.firm }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-3"><strong>Address:</strong></div>
+                        <div class="col-sm-9">{{ quotation.address|linebreaks }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-3"><strong>Payment Terms:</strong></div>
+                        <div class="col-sm-9">{{ quotation.payment_terms|linebreaks }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-3"><strong>Delivery Terms:</strong></div>
+                        <div class="col-sm-9">{{ quotation.delivery_terms|linebreaks }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Status & Metadata</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-sm-4"><strong>Status:</strong></div>
+                        <div class="col-sm-8">
+                            <span class="badge bg-{{ quotation.get_status_class }}">{{ quotation.get_status_display }}</span>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-4"><strong>Created:</strong></div>
+                        <div class="col-sm-8">{{ quotation.created_at|date:"M d, Y H:i" }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-4"><strong>Updated:</strong></div>
+                        <div class="col-sm-8">{{ quotation.updated_at|date:"M d, Y H:i" }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-4"><strong>Created By:</strong></div>
+                        <div class="col-sm-8">{{ quotation.created_by.get_full_name|default:quotation.created_by.username }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-4"><strong>Fixtures:</strong></div>
+                        <div class="col-sm-8">{{ quotation.fixtures_count }} items</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fixtures Details -->
+    {% if fixtures %}
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="mb-0">Fixtures ({{ fixtures|length }})</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Name</th>
+                            <th>Description</th>
+                            <th>HSN Code</th>
+                            <th>Quantity</th>
+                            <th>Unit</th>
+                            <th>Price</th>
+                            <th>Total</th>
+                            <th>Specifications</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for fixture in fixtures %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td>{{ fixture.name }}</td>
+                            <td>{{ fixture.desc }}</td>
+                            <td>{{ fixture.hsn }}</td>
+                            <td>{{ fixture.qty }}</td>
+                            <td>{{ fixture.unit }}</td>
+                            <td>{{ fixture.price }}</td>
+                            <td>{{ fixture.total }}</td>
+                            <td>
+                                {% if fixture.specifications %}
+                                    <div class="small text-muted" style="max-width: 200px; white-space: pre-wrap;">{{ fixture.specifications|truncatewords:20 }}</div>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% if fixture.words %}
+                        <tr>
+                            <td></td>
+                            <td colspan="7" class="text-muted small">
+                                <em>In Words: {{ fixture.words }}</em>
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

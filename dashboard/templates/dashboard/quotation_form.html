@@ -1,0 +1,294 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}{{ title }} - Dashboard{% endblock %}
+
+{% block content %}
+<div class="simple-form-page">
+    <div class="simple-form-wrapper">
+        <!-- Header -->
+        <div class="simple-header">
+            <h3>{{ title }}</h3>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard:quotation_management' %}">Quotations</a></li>
+                    <li class="breadcrumb-item active">{{ action }}</li>
+                </ol>
+            </nav>
+        </div>
+
+        <!-- Form Container -->
+        <div class="simple-form-container">
+            <form method="POST" class="simple-form">
+                {% csrf_token %}
+                
+                <!-- Quote Details Section -->
+                <div class="form-row three-column-row">
+                    <div class="form-group">
+                        <label for="quote_no">
+                            <i class="bi bi-hash"></i> Quote Number
+                        </label>
+                        <input type="text" id="quote_no" name="quote_no" class="form-control" value="{{ quotation.quote_number }}" required>
+                        <small class="form-text"><i class="bi bi-info-circle"></i> Unique quotation identifier</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="revision">
+                            <i class="bi bi-arrow-repeat"></i> Revision
+                        </label>
+                        <input type="text" id="revision" name="revision" class="form-control" value="{{ quotation.revision }}" placeholder="Rev A">
+                        <small class="form-text"><i class="bi bi-arrow-clockwise"></i> Document revision version</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="date">
+                            <i class="bi bi-calendar"></i> Date
+                        </label>
+                        <input type="text" id="date" name="date" class="form-control" value="{{ quotation.quotation_date }}" placeholder="Wednesday, September 24, 2025">
+                        <small class="form-text"><i class="bi bi-calendar-event"></i> Quotation date</small>
+                    </div>
+                </div>
+
+                <!-- Customer Details Section -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="to_person">
+                            <i class="bi bi-person"></i> To (Person)
+                        </label>
+                        <input type="text" id="to_person" name="to_person" class="form-control" value="{{ quotation.to_person }}" placeholder="Mr. Mohak Dholakia">
+                        <small class="form-text"><i class="bi bi-person-badge"></i> Contact person name</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="firm">
+                            <i class="bi bi-building"></i> Firm/Company
+                        </label>
+                        <input type="text" id="firm" name="firm" class="form-control" value="{{ quotation.firm }}" placeholder="Schneider Electric India Private Limited">
+                        <small class="form-text"><i class="bi bi-building-fill"></i> Company name</small>
+                    </div>
+                </div>
+
+                <!-- Address Section -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="address">
+                            <i class="bi bi-geo-alt"></i> Address
+                        </label>
+                        <textarea id="address" name="address" class="form-control" rows="3" placeholder="Full address">{{ quotation.address }}</textarea>
+                        <small class="form-text"><i class="bi bi-geo-alt-fill"></i> Complete company address</small>
+                    </div>
+                </div>
+
+                <!-- Terms Section -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="payment_terms">
+                            <i class="bi bi-credit-card"></i> Payment Terms
+                        </label>
+                        <textarea id="payment_terms" name="payment_terms" class="form-control" rows="2">{{ quotation.payment_terms }}</textarea>
+                        <small class="form-text"><i class="bi bi-credit-card-fill"></i> Payment conditions</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="delivery_terms">
+                            <i class="bi bi-truck"></i> Delivery Terms
+                        </label>
+                        <textarea id="delivery_terms" name="delivery_terms" class="form-control" rows="2">{{ quotation.delivery_terms }}</textarea>
+                        <small class="form-text"><i class="bi bi-truck-flatbed"></i> Delivery conditions</small>
+                    </div>
+                </div>
+
+                <!-- Products Section -->
+                <div class="items-section">
+                    <div class="section-header">
+                        <h5><i class="bi bi-boxes"></i> Products</h5>
+                        <button type="button" class="btn btn-sm btn-success" onclick="addFixture()">
+                            <i class="bi bi-plus-circle me-1"></i>Add Product
+                        </button>
+                    </div>
+                    
+                    <div class="items-table-container" id="fixtures-container">
+                        <!-- Fixtures will be populated here -->
+                    </div>
+                </div>
+
+                <!-- Submit Section -->
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="bi bi-save me-2"></i>{{ action }} Quotation
+                    </button>
+                    <a href="{% url 'dashboard:quotation_management' %}" class="btn btn-outline-secondary btn-lg">
+                        <i class="bi bi-arrow-left me-2"></i>Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+let fixtureCount = 0;
+const existingFixtures = {{ quotation.fixtures_data|safe }};
+
+function createFixtureHTML(index, fixtureData = null) {
+    const defaultData = fixtureData || {
+        name: `Fixture ${index + 1}`,
+        desc: '',
+        hsn: '84790000',
+        qty: '1',
+        unit: 'Set',
+        price: '',
+        total: '',
+        words: ''
+    };
+
+    return `
+        <div class="fixture-card" data-fixture-index="${index}">
+            <div class="fixture-header">
+                <h6><i class="bi bi-box"></i> Product ${index + 1}</h6>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeFixture(${index})">
+                    <i class="bi bi-trash"></i> Remove
+                </button>
+            </div>
+            
+            <div class="fixture-content">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Product Name</label>
+                        <input type="text" class="form-control" name="fixtures[${index}][name]" value="${defaultData.name}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <input type="text" class="form-control" name="fixtures[${index}][desc]" value="${defaultData.desc}" required>
+                    </div>
+                </div>
+                
+                <div class="form-row three-column-row">
+                    <div class="form-group">
+                        <label>HSN Code</label>
+                        <input type="text" class="form-control" name="fixtures[${index}][hsn]" value="${defaultData.hsn}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Quantity</label>
+                        <input type="number" class="form-control" name="fixtures[${index}][qty]" value="${defaultData.qty}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Unit</label>
+                        <input type="text" class="form-control" name="fixtures[${index}][unit]" value="${defaultData.unit}" required>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Unit Price</label>
+                        <input type="text" class="form-control" name="fixtures[${index}][price]" value="${defaultData.price}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Total Price</label>
+                        <input type="text" class="form-control" name="fixtures[${index}][total]" value="${defaultData.total}" required>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Price in Words</label>
+                        <input type="text" class="form-control" name="fixtures[${index}][words]" value="${defaultData.words}" required>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label><i class="bi bi-file-text"></i> Specifications</label>
+                        <textarea class="form-control" name="fixtures[${index}][specifications]" rows="4" placeholder="Enter detailed product specifications...">${defaultData.specifications || ''}</textarea>
+                        <small class="form-text text-muted">Optional: Detailed technical specifications for this product</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function addFixture() {
+    const container = document.getElementById('fixtures-container');
+    const fixtureHTML = createFixtureHTML(fixtureCount);
+    container.insertAdjacentHTML('beforeend', fixtureHTML);
+    fixtureCount++;
+}
+
+function removeFixture(index) {
+    const fixture = document.querySelector(`[data-fixture-index="${index}"]`);
+    if (fixture) {
+        fixture.remove();
+    }
+}
+
+// Initialize with existing fixtures on page load
+document.addEventListener('DOMContentLoaded', function() {
+    if (existingFixtures && existingFixtures.length > 0) {
+        existingFixtures.forEach((fixture, index) => {
+            const container = document.getElementById('fixtures-container');
+            const fixtureHTML = createFixtureHTML(index, fixture);
+            container.insertAdjacentHTML('beforeend', fixtureHTML);
+            fixtureCount++;
+        });
+    } else {
+        // Add default fixtures if none exist
+        addFixture();
+        addFixture();
+    }
+});
+</script>
+
+<style>
+/* Fixture Cards - Match Items Section Style */
+.fixture-card {
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    margin-bottom: 1rem;
+    background: #fff;
+}
+
+.fixture-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    border-radius: 0.375rem 0.375rem 0 0;
+}
+
+.fixture-header h6 {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #495057;
+}
+
+.fixture-content {
+    padding: 1rem;
+}
+
+.fixture-content .form-row {
+    margin-bottom: 0.75rem;
+}
+
+.fixture-content .form-row:last-child {
+    margin-bottom: 0;
+}
+
+/* Responsive adjustments for fixtures */
+@media (max-width: 768px) {
+    .fixture-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+    }
+    
+    .fixture-header .btn {
+        width: 100%;
+    }
+}
+</style>
+
+{% endblock %}

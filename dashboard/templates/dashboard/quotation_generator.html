@@ -1,0 +1,364 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}Quotation Generator - Dashboard{% endblock %}
+
+{% block body_class %}scrollable-page{% endblock %}
+
+{% block content %}
+<div class="simple-form-page">
+    <div class="simple-form-wrapper">
+        <!-- Header -->
+        <div class="simple-header">
+            <h3>Generate Quotation</h3>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard:quotation_management' %}">Quotations</a></li>
+                    <li class="breadcrumb-item active">Generate Quotation</li>
+                </ol>
+            </nav>
+        </div>
+
+        <!-- Form Container -->
+        <div class="simple-form-container">
+            {% if error %}
+            <div class="alert alert-danger">
+                <strong>Error:</strong> {{ error }}
+            </div>
+            {% endif %}
+            <form method="POST" action="{% url 'dashboard:generate_quotation' %}" class="simple-form" enctype="multipart/form-data">
+                {% csrf_token %}
+                
+                <!-- Quote Details Section -->
+                <div class="form-row three-column-row">
+                    <div class="form-group">
+                        <label for="quote_no">
+                            <i class="bi bi-hash"></i> Quote Number
+                        </label>
+                        <input type="text" id="quote_no" name="quote_no" class="form-control" value="KEC005JN2025" required>
+                        <small class="form-text"><i class="bi bi-info-circle"></i> Unique quotation identifier</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="revision">
+                            <i class="bi bi-arrow-repeat"></i> Revision
+                        </label>
+                        <input type="text" id="revision" name="revision" class="form-control" value="Rev A" placeholder="Rev A">
+                        <small class="form-text"><i class="bi bi-arrow-clockwise"></i> Document revision version</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="date">
+                            <i class="bi bi-calendar"></i> Date
+                        </label>
+                        <input type="text" id="date" name="date" class="form-control" value="Wednesday, September 24, 2025" placeholder="Wednesday, September 24, 2025">
+                        <small class="form-text"><i class="bi bi-calendar-event"></i> Quotation date</small>
+                    </div>
+                </div>
+
+                <!-- Customer Details Section -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="to_person">
+                            <i class="bi bi-person"></i> To (Person)
+                        </label>
+                        <input type="text" id="to_person" name="to_person" class="form-control" value="Mr. Mohak Dholakia" placeholder="Mr. Mohak Dholakia">
+                        <small class="form-text"><i class="bi bi-person-badge"></i> Contact person name</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="firm">
+                            <i class="bi bi-building"></i> Firm/Company
+                        </label>
+                        <input type="text" id="firm" name="firm" class="form-control" value="Schneider Electric India Private Limited" placeholder="Schneider Electric India Private Limited">
+                        <small class="form-text"><i class="bi bi-building-fill"></i> Company name</small>
+                    </div>
+                </div>
+
+                <!-- Address Section -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="address">
+                            <i class="bi bi-geo-alt"></i> Address
+                        </label>
+                        <textarea id="address" name="address" class="form-control" rows="3" placeholder="Full address">Electrical & Automation (E&A), Village Ankhol, Behind L&T Knowledge City, N. H. 8, Between Ajwa-Waghodia Junction, Vadodara –390019. India</textarea>
+                        <small class="form-text"><i class="bi bi-geo-alt-fill"></i> Complete company address</small>
+                    </div>
+                </div>
+
+                <!-- Terms Section -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="payment_terms">
+                            <i class="bi bi-credit-card"></i> Payment Terms
+                        </label>
+                        <textarea id="payment_terms" name="payment_terms" class="form-control" rows="2">Payment: 45 Days from delivery (Being an MSME)</textarea>
+                        <small class="form-text"><i class="bi bi-credit-card-fill"></i> Payment conditions</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="delivery_terms">
+                            <i class="bi bi-truck"></i> Delivery Terms
+                        </label>
+                        <textarea id="delivery_terms" name="delivery_terms" class="form-control" rows="2">Delivery: 2-3 weeks per fixture from Purchase Order (Gov. force majeure conditions apply at time of delivery)</textarea>
+                        <small class="form-text"><i class="bi bi-truck-flatbed"></i> Delivery conditions</small>
+                    </div>
+                </div>
+
+                <!-- Products Section -->
+                <div class="items-section">
+                    <div class="section-header">
+                        <h5><i class="bi bi-boxes"></i> Products</h5>
+                        <button type="button" class="btn btn-sm btn-success" onclick="addFixture()">
+                            <i class="bi bi-plus-circle me-1"></i>Add Product
+                        </button>
+                    </div>
+                    
+                    <div class="items-table-container" id="fixtures-container">
+                        <!-- Fixtures will be added here dynamically -->
+                    </div>
+                </div>
+
+                <!-- Submit Section -->
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="bi bi-download me-2"></i>Generate & Download Quotation
+                    </button>
+                    <a href="{% url 'dashboard:quotation_management' %}" class="btn btn-outline-secondary btn-lg">
+                        <i class="bi bi-arrow-left me-2"></i>Back to Management
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="alert alert-info mt-3">
+        <i class="bi bi-info-circle"></i>
+        <strong>Note:</strong> This tool uses the template "Quote KEC005JN2025 RevA - new format full.docx" and preserves all formatting while replacing the specified fields.
+    </div>
+</div>
+
+<script>
+let fixtureCount = 0;
+
+function createFixtureHTML(index) {
+    const defaults = [
+        {
+            name: 'Fixture 1',
+            desc: 'Holding minitop connector',
+            hsn: '84790000',
+            qty: '1',
+            unit: 'Set',
+            price: '26,879/-',
+            total: '26,879/-',
+            words: 'Twenty-Six Thousand Eight Hundred Seventy-Nine INR Only PER EACH',
+            specifications: 'Technical specifications for Fixture 1:\n• Material: High-grade steel\n• Dimensions: As per drawing\n• Finish: Powder coated\n• Compliance: ISO standards'
+        },
+        {
+            name: 'Fixture 2',
+            desc: 'pulling minitop PCBA',
+            hsn: '84790000',
+            qty: '1',
+            unit: 'Set',
+            price: '29,546/-',
+            total: '29,546/-',
+            words: 'Twenty-Nine Thousand Five Hundred Forty-Six INR Only PER EACH',
+            specifications: 'Technical specifications for Fixture 2:\n• Material: Aluminum alloy\n• Dimensions: As per drawing\n• Finish: Anodized\n• Compliance: ISO standards'
+        }
+    ];
+
+    const defaultData = defaults[index] || {
+        name: `Fixture ${index + 1}`,
+        desc: '',
+        hsn: '84790000',
+        qty: '1',
+        unit: 'Set',
+        price: '',
+        total: '',
+        words: '',
+        specifications: ''
+    };
+
+    return `
+        <div class="fixture-card" data-fixture-index="${index}">
+            <div class="fixture-header">
+                <h6><i class="bi bi-box"></i> Product ${index + 1}</h6>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeFixture(${index})">
+                    <i class="bi bi-trash"></i> Remove
+                </button>
+            </div>
+            
+            <div class="fixture-content">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Product Name</label>
+                        <input type="text" class="form-control" name="fixtures[${index}][name]" value="${defaultData.name}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <input type="text" class="form-control" name="fixtures[${index}][desc]" value="${defaultData.desc}" required>
+                    </div>
+                </div>
+                
+                <div class="form-row three-column-row">
+                    <div class="form-group">
+                        <label>HSN Code</label>
+                        <input type="text" class="form-control" name="fixtures[${index}][hsn]" value="${defaultData.hsn}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Quantity</label>
+                        <input type="number" class="form-control" name="fixtures[${index}][qty]" value="${defaultData.qty}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Unit</label>
+                        <input type="text" class="form-control" name="fixtures[${index}][unit]" value="${defaultData.unit}" required>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Unit Price</label>
+                        <input type="text" class="form-control" name="fixtures[${index}][price]" value="${defaultData.price}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Total Price</label>
+                        <input type="text" class="form-control" name="fixtures[${index}][total]" value="${defaultData.total}" required>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Price in Words</label>
+                        <input type="text" class="form-control" name="fixtures[${index}][words]" value="${defaultData.words}" required>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label><i class="bi bi-file-text"></i> Specifications</label>
+                        <textarea class="form-control" name="fixtures[${index}][specifications]" rows="4" placeholder="Enter detailed product specifications...">${defaultData.specifications || ''}</textarea>
+                        <small class="form-text text-muted">Optional: Detailed technical specifications for this product</small>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label><i class="bi bi-image"></i> Product Image (Optional)</label>
+                        <input type="file" class="form-control" name="fixtures[${index}][image]" accept="image/jpeg,image/jpg,image/png,image/gif" onchange="handleImageUpload(this, ${index})">
+                        <small class="form-text text-muted">Optional: Upload a product image (JPEG, PNG, GIF - Max 5MB)</small>
+                        <div id="image-preview-${index}" class="mt-2" style="display: none;">
+                            <small class="text-success"><i class="bi bi-check-circle"></i> <span id="image-info-${index}"></span></small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function addFixture() {
+    const container = document.getElementById('fixtures-container');
+    const fixtureHTML = createFixtureHTML(fixtureCount);
+    container.insertAdjacentHTML('beforeend', fixtureHTML);
+    fixtureCount++;
+}
+
+function removeFixture(index) {
+    const fixture = document.querySelector(`[data-fixture-index="${index}"]`);
+    if (fixture) {
+        fixture.remove();
+    }
+}
+
+function handleImageUpload(input, index) {
+    const previewDiv = document.getElementById(`image-preview-${index}`);
+    const infoSpan = document.getElementById(`image-info-${index}`);
+    
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
+        
+        // Validate file size
+        if (file.size > 5 * 1024 * 1024) {
+            alert(`Image is too large (${fileSizeMB}MB). Maximum size is 5MB.`);
+            input.value = '';
+            previewDiv.style.display = 'none';
+            return;
+        }
+        
+        // Validate file type
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+        if (!allowedTypes.includes(file.type)) {
+            alert('Please select a valid image file (JPEG, PNG, or GIF).');
+            input.value = '';
+            previewDiv.style.display = 'none';
+            return;
+        }
+        
+        // Show success feedback
+        infoSpan.textContent = `${file.name} (${fileSizeMB}MB) - Ready for upload`;
+        previewDiv.style.display = 'block';
+    } else {
+        previewDiv.style.display = 'none';
+    }
+}
+
+// Initialize with 2 fixtures on page load
+document.addEventListener('DOMContentLoaded', function() {
+    addFixture();
+    addFixture();
+});
+</script>
+
+<style>
+/* Fixture Cards - Match Items Section Style */
+.fixture-card {
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    margin-bottom: 1rem;
+    background: #fff;
+}
+
+.fixture-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    border-radius: 0.375rem 0.375rem 0 0;
+}
+
+.fixture-header h6 {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #495057;
+}
+
+.fixture-content {
+    padding: 1rem;
+}
+
+.fixture-content .form-row {
+    margin-bottom: 0.75rem;
+}
+
+.fixture-content .form-row:last-child {
+    margin-bottom: 0;
+}
+
+/* Responsive adjustments for fixtures */
+@media (max-width: 768px) {
+    .fixture-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+    }
+    
+    .fixture-header .btn {
+        width: 100%;
+    }
+}
+</style>
+{% endblock %}

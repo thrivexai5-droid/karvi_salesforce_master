@@ -2,6 +2,38 @@
 
 {% block body_class %}scrollable-page{% endblock %}
 
+{% block extra_css %}
+<style>
+/* Add Button - Icon and Text Alignment */
+.add-invoice-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    padding: 0.75rem 1.25rem !important;
+    font-weight: 600 !important;
+    border-radius: 0.5rem !important;
+    transition: all 0.2s ease !important;
+}
+
+.add-invoice-btn i {
+    font-size: 1rem !important;
+    line-height: 1 !important;
+    margin: 0 !important;
+}
+
+.add-invoice-btn span {
+    font-size: 0.875rem !important;
+    line-height: 1 !important;
+    margin: 0 !important;
+}
+
+.add-invoice-btn:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3) !important;
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="user-management-container">
     <!-- Page Header -->
@@ -10,8 +42,9 @@
             <h2 class="page-title">Invoice Generation</h2>
             <p class="page-subtitle">Manage invoices and track payment schedules</p>
         </div>
-        <a href="{% url 'dashboard:invoice_create' %}" class="btn btn-primary">
-            <i class="bi bi-plus-circle me-2"></i>Create New Invoice
+        <a href="{% url 'dashboard:invoice_create' %}" class="btn btn-primary add-invoice-btn">
+            <i class="bi bi-plus-circle"></i>
+            <span>Create New Invoice</span>
         </a>
     </div>
 
@@ -206,8 +239,9 @@
                         Start by creating your first invoice.
                     {% endif %}
                 </p>
-                <a href="{% url 'dashboard:invoice_create' %}" class="btn btn-primary">
-                    <i class="bi bi-plus-circle me-2"></i>Create New Invoice
+                <a href="{% url 'dashboard:invoice_create' %}" class="btn btn-primary add-invoice-btn">
+                    <i class="bi bi-plus-circle"></i>
+                    <span>Create New Invoice</span>
                 </a>
             </div>
         {% endif %}

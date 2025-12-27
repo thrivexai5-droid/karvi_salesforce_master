@@ -1,0 +1,62 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}Delete Quotation - {{ quotation.quote_number }}{% endblock %}
+
+{% block content %}
+<div class="user-management-container">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div>
+            <h2 class="page-title">Delete Quotation</h2>
+            <p class="page-subtitle">Confirm deletion of {{ quotation.quote_number }}</p>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation -->
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-exclamation-triangle me-2"></i>Confirm Deletion
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <i class="bi bi-warning me-2"></i>
+                        <strong>Warning:</strong> This action cannot be undone. The quotation and all its data will be permanently deleted.
+                    </div>
+
+                    <h6>Quotation Details:</h6>
+                    <ul class="list-unstyled">
+                        <li><strong>Quote Number:</strong> {{ quotation.quote_number }}</li>
+                        <li><strong>Revision:</strong> {{ quotation.revision }}</li>
+                        <li><strong>Company:</strong> {{ quotation.firm }}</li>
+                        <li><strong>Contact Person:</strong> {{ quotation.to_person }}</li>
+                        <li><strong>Created:</strong> {{ quotation.created_at|date:"M d, Y H:i" }}</li>
+                        <li><strong>Fixtures:</strong> {{ quotation.fixtures_count }} items</li>
+                        <li><strong>Status:</strong> 
+                            <span class="badge bg-{{ quotation.get_status_class }}">{{ quotation.get_status_display }}</span>
+                        </li>
+                    </ul>
+
+                    <p class="text-muted">
+                        Are you sure you want to delete this quotation? This will remove all associated data including fixtures and cannot be recovered.
+                    </p>
+                </div>
+                <div class="card-footer">
+                    <form method="POST" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-trash me-2"></i>Yes, Delete Quotation
+                        </button>
+                    </form>
+                    <a href="{% url 'dashboard:quotation_management' %}" class="btn btn-secondary ms-2">
+                        <i class="bi bi-arrow-left me-2"></i>Cancel
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

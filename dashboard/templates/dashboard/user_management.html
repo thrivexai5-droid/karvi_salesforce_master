@@ -2,6 +2,69 @@
 
 {% block body_class %}scrollable-page{% endblock %}
 
+{% block extra_css %}
+<style>
+/* Add User Button - Icon and Text Alignment */
+.add-user-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    padding: 0.75rem 1.25rem !important;
+    font-weight: 600 !important;
+    border-radius: 0.5rem !important;
+    transition: all 0.2s ease !important;
+}
+
+.add-user-btn i {
+    font-size: 1rem !important;
+    line-height: 1 !important;
+    margin: 0 !important;
+}
+
+.add-user-btn span {
+    font-size: 0.875rem !important;
+    line-height: 1 !important;
+    margin: 0 !important;
+}
+
+.add-user-btn:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3) !important;
+}
+
+/* Header Actions Alignment */
+.header-actions {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.75rem !important;
+}
+
+/* Page Header Improvements */
+.page-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    margin-bottom: 2rem !important;
+    padding-bottom: 1rem !important;
+    border-bottom: 1px solid #e9ecef !important;
+}
+
+.header-content h2.page-title {
+    display: flex !important;
+    align-items: center !important;
+    margin: 0 !important;
+    font-size: 1.75rem !important;
+    font-weight: 700 !important;
+    color: #2c3e50 !important;
+}
+
+.header-content h2.page-title i {
+    font-size: 1.5rem !important;
+    color: #3b82f6 !important;
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid p-0">
     <div class="user-management-container">
@@ -12,12 +75,11 @@
                     <i class="bi bi-people-fill me-2"></i>
                     User Management
                 </h2>
-                <p class="page-subtitle">Manage system users, roles, and permissions</p>
             </div>
             <div class="header-actions">
-                <a href="{% url 'dashboard:user_create' %}" class="btn btn-primary">
-                    <i class="bi bi-person-plus me-2"></i>
-                    Add New User
+                <a href="{% url 'dashboard:user_create' %}" class="btn btn-primary add-user-btn">
+                    <i class="bi bi-person-plus"></i>
+                    <span>Add User</span>
                 </a>
             </div>
         </div>
@@ -211,9 +273,9 @@
                     <i class="bi bi-people display-1 text-muted"></i>
                     <h4>No Users Found</h4>
                     <p class="text-muted">No users match your search criteria.</p>
-                    <a href="{% url 'dashboard:user_create' %}" class="btn btn-primary">
-                        <i class="bi bi-person-plus me-2"></i>
-                        Add First User
+                    <a href="{% url 'dashboard:user_create' %}" class="btn btn-primary add-user-btn">
+                        <i class="bi bi-person-plus"></i>
+                        <span>Add First User</span>
                     </a>
                 </div>
             {% endif %}

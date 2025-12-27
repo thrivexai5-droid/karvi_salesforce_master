@@ -11,6 +11,11 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -25,7 +30,9 @@ SECRET_KEY = 'django-insecure-=f9&jrdwmv9e(0_bogp3bsv$^7)cbx!b1slac69=-ncho@!e5j
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '*']
+
 
 
 # Application definition
@@ -130,3 +137,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/login/'
+
+# Mistral AI API Key
+# Get your API key from: https://console.mistral.ai/
+# Add it to your .env file: MISTRAL_API_KEY=your-actual-key-here
+MISTRAL_API_KEY = os.getenv('MISTRAL_API_KEY', 'your-actual-mistral-api-key-here')

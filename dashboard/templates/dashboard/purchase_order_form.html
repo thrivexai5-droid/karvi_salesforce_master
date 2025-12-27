@@ -5,25 +5,49 @@
 {% block content %}
 <div class="simple-form-page">
     <div class="simple-form-wrapper">
-        <!-- Header -->
         <div class="simple-header">
-            <h3>{{ title }}</h3>
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}">Dashboard</a></li>
-                    <li class="breadcrumb-item"><a href="{% url 'dashboard:purchase_order_management' %}">Purchase Orders</a></li>
-                    <li class="breadcrumb-item active">{{ action }} Order</li>
-                </ol>
-            </nav>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="position-relative">
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="uploadPoBtn">
+                        <i class="bi bi-paperclip me-1"></i>Upload PO (PDF)
+                    </button>
+                    
+                    <div class="card position-absolute" id="uploadPoCard" style="display: none; top: 100%; left: 0; width: 300px; z-index: 1050; margin-top: 5px;">
+                        <div class="card-header py-2">
+                            <h6 class="mb-0 fs-6">AI Purchase Order Extraction</h6>
+                        </div>
+                        <div class="card-body py-2">
+                            <input type="file" class="form-control form-control-sm mb-2" id="poFileInput" accept="application/pdf">
+                            <small class="text-muted">PDF only (Max 5MB)</small>
+                            <div id="fileError" class="text-danger mt-1" style="display: none;"></div>
+                            <div id="fileName" class="text-success mt-1" style="display: none;"></div>
+                        </div>
+                        <div class="card-footer py-2">
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-primary btn-sm" id="uploadBtn" disabled>
+                                    <i class="bi bi-cpu me-1"></i>Extract Data
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="cancelUploadBtn">
+                                    <i class="bi bi-x me-1"></i>Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}">Dashboard</a></li>
+                        <li class="breadcrumb-item"><a href="{% url 'dashboard:purchase_order_management' %}">Purchase Orders</a></li>
+                        <li class="breadcrumb-item active">{{ action }} Order</li>
+                    </ol>
+                </nav>
+            </div>
         </div>
 
-        <!-- Form Container -->
         <div class="simple-form-container">
             {% if is_edit and order_obj %}
                 <div class="edit-indicator">
-                    <div class="user-initial">
-                        {{ order_obj.po_number|first|upper }}
-                    </div>
+                    <div class="user-initial">{{ order_obj.po_number|first|upper }}</div>
                     <div>
                         <strong>Editing PO: {{ order_obj.po_number }}</strong>
                         <div class="text-muted">Company: {{ order_obj.company.company }} | Value: ₹{{ order_obj.order_value }}</div>
@@ -34,12 +58,9 @@
             <form method="post" class="simple-form" id="po-form">
                 {% csrf_token %}
                 
-                <!-- PO Number and Date Row -->
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="{{ form.po_number.id_for_label }}">
-                            <i class="bi bi-hash"></i> PO Number *
-                        </label>
+                        <label for="{{ form.po_number.id_for_label }}"><i class="bi bi-hash"></i> PO Number *</label>
                         {{ form.po_number }}
                         {% if form.po_number.errors %}
                             <div class="error-msg">{{ form.po_number.errors.0 }}</div>
@@ -47,9 +68,7 @@
                     </div>
                     
                     <div class="form-group">
-                        <label for="{{ form.order_date.id_for_label }}">
-                            <i class="bi bi-calendar"></i> Order Date *
-                        </label>
+                        <label for="{{ form.order_date.id_for_label }}"><i class="bi bi-calendar"></i> Order Date *</label>
                         {{ form.order_date }}
                         {% if form.order_date.errors %}
                             <div class="error-msg">{{ form.order_date.errors.0 }}</div>
@@ -57,32 +76,26 @@
                     </div>
                 </div>
 
-                <!-- Customer and Company Row -->
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="{{ form.customer_name_select.id_for_label }}">
-                            <i class="bi bi-person"></i> Customer Name *
-                        </label>
+                        <label for="{{ form.customer_name_select.id_for_label }}"><i class="bi bi-person"></i> Customer Name *</label>
                         {{ form.customer_name_select }}
+                        {{ form.selected_customer_id }}
+                        <div id="customer-dropdown" class="autocomplete-dropdown" style="display: none;"></div>
                         {% if form.customer_name_select.errors %}
                             <div class="error-msg">{{ form.customer_name_select.errors.0 }}</div>
                         {% endif %}
                     </div>
                     
                     <div class="form-group">
-                        <label for="company-display">
-                            <i class="bi bi-building"></i> Company (Auto-filled)
-                        </label>
+                        <label for="company-display"><i class="bi bi-building"></i> Company (Auto-filled)</label>
                         <input type="text" id="company-display" class="form-control" readonly placeholder="Select customer first">
                     </div>
                 </div>
 
-                <!-- Value and Manufacturing Days Row -->
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="{{ form.order_value.id_for_label }}">
-                            <i class="bi bi-currency-rupee"></i> Order Value *
-                        </label>
+                        <label for="{{ form.order_value.id_for_label }}"><i class="bi bi-currency-rupee"></i> Order Value *</label>
                         {{ form.order_value }}
                         {% if form.order_value.errors %}
                             <div class="error-msg">{{ form.order_value.errors.0 }}</div>
@@ -90,9 +103,7 @@
                     </div>
                     
                     <div class="form-group">
-                        <label for="{{ form.days_to_mfg.id_for_label }}">
-                            <i class="bi bi-clock"></i> Days to Manufacturing *
-                        </label>
+                        <label for="{{ form.days_to_mfg.id_for_label }}"><i class="bi bi-clock"></i> Days to Manufacturing *</label>
                         {{ form.days_to_mfg }}
                         {% if form.days_to_mfg.errors %}
                             <div class="error-msg">{{ form.days_to_mfg.errors.0 }}</div>
@@ -100,19 +111,14 @@
                     </div>
                 </div>
 
-                <!-- Calculated Fields Display -->
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="delivery-date-display">
-                            <i class="bi bi-truck"></i> Delivery Date (Auto-calculated)
-                        </label>
+                        <label for="delivery-date-display"><i class="bi bi-truck"></i> Delivery Date (Auto-calculated)</label>
                         <input type="text" id="delivery-date-display" class="form-control" readonly placeholder="Will be calculated">
                     </div>
                     
                     <div class="form-group">
-                        <label for="due-days-display">
-                            <i class="bi bi-hourglass"></i> Due Days (Auto-calculated)
-                        </label>
+                        <label for="due-days-display"><i class="bi bi-hourglass"></i> Due Days (Auto-calculated)</label>
                         <input type="text" id="due-days-display" class="form-control" readonly placeholder="Will be calculated">
                     </div>
                 </div>
@@ -120,38 +126,33 @@
                 <!-- Sales Person and Project Manager Row -->
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="{{ form.sales_person.id_for_label }}">
-                            <i class="bi bi-person-badge"></i> Sales Person
-                        </label>
+                        <label for="{{ form.sales_person.id_for_label }}"><i class="bi bi-person-badge"></i> Sales Person</label>
                         {{ form.sales_person }}
                         {% if form.sales_person.errors %}
                             <div class="error-msg">{{ form.sales_person.errors.0 }}</div>
                         {% endif %}
                     </div>
-
-                      <div class="form-group">
-                        <label for="{{ form.sales_percentage.id_for_label }}">
-                            <i class="bi bi-percent"></i> Sales Percentage (%)
-                        </label>
+                    
+                    <div class="form-group">
+                        <label for="{{ form.sales_percentage.id_for_label }}"><i class="bi bi-percent"></i> Sales Percentage (%)</label>
                         {{ form.sales_percentage }}
                         {% if form.sales_percentage.errors %}
                             <div class="error-msg">{{ form.sales_percentage.errors.0 }}</div>
                         {% endif %}
                     </div>
-                    
+                </div>
+
+                <div class="form-row">
                     <div class="form-group">
-                        <label for="{{ form.project_manager.id_for_label }}">
-                            <i class="bi bi-person-gear"></i> Project Manager
-                        </label>
+                        <label for="{{ form.project_manager.id_for_label }}"><i class="bi bi-person-gear"></i> Project Manager</label>
                         {{ form.project_manager }}
                         {% if form.project_manager.errors %}
                             <div class="error-msg">{{ form.project_manager.errors.0 }}</div>
                         {% endif %}
                     </div>
+                    
                     <div class="form-group">
-                        <label for="{{ form.project_manager_percentage.id_for_label }}">
-                            <i class="bi bi-percent"></i> Project Manager Percentage (%)
-                        </label>
+                        <label for="{{ form.project_manager_percentage.id_for_label }}"><i class="bi bi-percent"></i> Project Manager Percentage (%)</label>
                         {{ form.project_manager_percentage }}
                         {% if form.project_manager_percentage.errors %}
                             <div class="error-msg">{{ form.project_manager_percentage.errors.0 }}</div>
@@ -159,25 +160,56 @@
                     </div>
                 </div>
 
-                <!-- Sales and Project Manager Percentage Row
-                <div class="form-row">
-                  
-                    
-                    
-                </div> -->
-
-                <!-- Remarks -->
                 <div class="form-group">
-                    <label for="{{ form.remarks.id_for_label }}">
-                        <i class="bi bi-chat-text"></i> Remarks
-                    </label>
+                    <label for="{{ form.remarks.id_for_label }}"><i class="bi bi-chat-text"></i> Remarks</label>
                     {{ form.remarks }}
                     {% if form.remarks.errors %}
                         <div class="error-msg">{{ form.remarks.errors.0 }}</div>
                     {% endif %}
                 </div>
 
-                <!-- Form Actions -->
+                <div class="form-group">
+                    <label for="{{ form.payment_terms.id_for_label }}"><i class="bi bi-calendar-check"></i> Payment Terms (Days)</label>
+                    {{ form.payment_terms }}
+                    {% if form.payment_terms.errors %}
+                        <div class="error-msg">{{ form.payment_terms.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Items Section -->
+                <div class="items-section">
+                    <div class="section-header">
+                        <h5><i class="bi bi-list-ul"></i> Items</h5>
+                        <button type="button" class="btn btn-sm btn-success" id="add-item-btn">
+                            <i class="bi bi-plus-circle me-1"></i>Add Item
+                        </button>
+                    </div>
+                    <div class="items-table-container">
+                        <table class="table table-bordered" id="items-table">
+                            <thead>
+                                <tr>
+                                    <th width="8%">No</th>
+                                    <th width="40%">Item</th>
+                                    <th width="15%">Qty</th>
+                                    <th width="20%">Price</th>
+                                    <th width="20%">Amount</th>
+                                    <th width="7%">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="items-tbody">
+                                <!-- Items will be added here dynamically -->
+                            </tbody>
+                            <tfoot>
+                                <tr class="table-info">
+                                    <td colspan="4" class="text-end fw-bold">Total Amount:</td>
+                                    <td class="fw-bold" id="total-amount">₹0.00</td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
                 <div class="form-actions">
                     <button type="submit" class="btn-primary">
                         <i class="bi bi-check-circle me-2"></i>{{ action }} Purchase Order
@@ -191,53 +223,297 @@
     </div>
 </div>
 
+
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // --- Existing Form Elements ---
     const customerSelect = document.getElementById('{{ form.customer_name_select.id_for_label }}');
+    const selectedCustomerId = document.getElementById('{{ form.selected_customer_id.id_for_label }}');
+    const customerDropdown = document.getElementById('customer-dropdown');
     const companyDisplay = document.getElementById('company-display');
     const orderDateInput = document.getElementById('{{ form.order_date.id_for_label }}');
     const mfgDaysInput = document.getElementById('{{ form.days_to_mfg.id_for_label }}');
     const deliveryDateDisplay = document.getElementById('delivery-date-display');
     const dueDaysDisplay = document.getElementById('due-days-display');
+    const orderValueInput = document.getElementById('{{ form.order_value.id_for_label }}');
 
-    // Auto-fill company when customer is selected
-    customerSelect.addEventListener('change', function() {
-        const customerId = this.value;
-        if (customerId) {
-            fetch(`{% url 'dashboard:get_contact_data_ajax' %}?contact_id=${customerId}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        companyDisplay.value = data.company_name;
-                        companyDisplay.style.backgroundColor = '#e8f5e8';
-                    } else {
-                        companyDisplay.value = 'Error loading company';
-                        companyDisplay.style.backgroundColor = '#f8d7da';
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    companyDisplay.value = 'Error loading company';
-                    companyDisplay.style.backgroundColor = '#f8d7da';
-                });
-        } else {
+    // --- Items Management Elements ---
+    const addItemBtn = document.getElementById('add-item-btn');
+    const itemsTbody = document.getElementById('items-tbody');
+    const totalAmountDisplay = document.getElementById('total-amount');
+    let itemCounter = 0;
+    
+    // --- Autocomplete Variables ---
+    let searchTimeout;
+    let selectedCustomer = null;
+
+    // --- Customer Autocomplete Functionality ---
+    function searchCustomers(query) {
+        if (query.length < 2) {
+            customerDropdown.style.display = 'none';
+            return;
+        }
+        
+        fetch(`{% url 'dashboard:search_customers_ajax' %}?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.customers.length > 0) {
+                    showCustomerDropdown(data.customers);
+                } else {
+                    customerDropdown.style.display = 'none';
+                }
+            })
+            .catch(error => {
+                console.error('Error searching customers:', error);
+                customerDropdown.style.display = 'none';
+            });
+    }
+    
+    function showCustomerDropdown(customers) {
+        customerDropdown.innerHTML = '';
+        
+        customers.forEach(customer => {
+            const item = document.createElement('div');
+            item.className = 'autocomplete-item';
+            item.innerHTML = `
+                <div class="customer-name">${customer.customer_name}</div>
+                <div class="company-name">${customer.company_name}</div>
+            `;
+            item.addEventListener('click', () => selectCustomer(customer));
+            customerDropdown.appendChild(item);
+        });
+        
+        customerDropdown.style.display = 'block';
+    }
+    
+    function selectCustomer(customer) {
+        selectedCustomer = customer;
+        customerSelect.value = customer.customer_name;
+        selectedCustomerId.value = customer.id;
+        customerDropdown.style.display = 'none';
+        
+        // Auto-fill company field
+        companyDisplay.value = customer.company_name;
+        companyDisplay.style.backgroundColor = '#e8f5e8';
+        
+        calculateDates();
+    }
+    
+    // Customer input event listeners
+    customerSelect.addEventListener('input', function() {
+        const query = this.value.trim();
+        
+        // Clear previous timeout
+        clearTimeout(searchTimeout);
+        
+        // Clear selected customer if input changes
+        if (!selectedCustomer || this.value !== selectedCustomer.customer_name) {
+            selectedCustomer = null;
+            selectedCustomerId.value = '';
             companyDisplay.value = '';
             companyDisplay.style.backgroundColor = '';
         }
-        calculateDates();
+        
+        // Set timeout for search
+        searchTimeout = setTimeout(() => {
+            searchCustomers(query);
+        }, 300); // 300ms delay
+    });
+    
+    customerSelect.addEventListener('focus', function() {
+        if (this.value.length >= 2) {
+            searchCustomers(this.value);
+        }
+    });
+    
+    // Hide dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!customerSelect.contains(e.target) && !customerDropdown.contains(e.target)) {
+            customerDropdown.style.display = 'none';
+        }
+    });
+    
+    // Handle keyboard navigation
+    customerSelect.addEventListener('keydown', function(e) {
+        const items = customerDropdown.querySelectorAll('.autocomplete-item');
+        let selectedIndex = -1;
+        
+        // Find currently selected item
+        items.forEach((item, index) => {
+            if (item.classList.contains('selected')) {
+                selectedIndex = index;
+            }
+        });
+        
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            selectedIndex = Math.max(selectedIndex - 1, 0);
+        } else if (e.key === 'Enter' && selectedIndex >= 0) {
+            e.preventDefault();
+            items[selectedIndex].click();
+            return;
+        } else if (e.key === 'Escape') {
+            customerDropdown.style.display = 'none';
+            return;
+        }
+        
+        // Update selected item
+        items.forEach((item, index) => {
+            item.classList.toggle('selected', index === selectedIndex);
+        });
     });
 
-    // Calculate delivery date and due days
+    // --- AI Upload Elements ---
+    const uploadPoBtn = document.getElementById('uploadPoBtn');
+    const uploadPoCard = document.getElementById('uploadPoCard');
+    const poFileInput = document.getElementById('poFileInput');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const cancelUploadBtn = document.getElementById('cancelUploadBtn');
+    const fileError = document.getElementById('fileError');
+    const fileName = document.getElementById('fileName');
+
+    // Toggle Card Visibility
+    uploadPoBtn.addEventListener('click', function() {
+        const isHidden = uploadPoCard.style.display === 'none';
+        uploadPoCard.style.display = isHidden ? 'block' : 'none';
+        this.innerHTML = isHidden ? '<i class="bi bi-x-lg me-1"></i>Close' : '<i class="bi bi-paperclip me-1"></i>Upload PO (PDF)';
+    });
+
+    // File Selection Feedback
+    poFileInput.addEventListener('change', function() {
+        const file = this.files[0];
+        fileError.style.display = 'none';
+        if (file && file.type === 'application/pdf') {
+            fileName.innerHTML = `<small class="text-success"><i class="bi bi-file-earmark-pdf"></i> ${file.name}</small>`;
+            fileName.style.display = 'block';
+            uploadBtn.disabled = false;
+        } else {
+            uploadBtn.disabled = true;
+        }
+    });
+
+    // --- AI PROCESSING AJAX LOGIC ---
+    uploadBtn.addEventListener('click', function() {
+        const file = poFileInput.files[0];
+        if (!file) return;
+
+        uploadBtn.disabled = true;
+        uploadBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Processing...';
+
+        const formData = new FormData();
+        formData.append('po_file', file);
+        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+        fetch('{% url "dashboard:upload_po_ajax" %}', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                const data = result.data;
+                
+                // Set Values to Main Form Fields
+                document.getElementById('{{ form.po_number.id_for_label }}').value = data.po_number || '';
+                
+                // Handle both po_date and order_date for backward compatibility
+                const orderDate = data.po_date || data.order_date || '';
+                document.getElementById('{{ form.order_date.id_for_label }}').value = orderDate;
+                
+                // Set order value (net_value or order_value)
+                const orderValue = data.net_value || data.order_value || 0;
+                document.getElementById('{{ form.order_value.id_for_label }}').value = orderValue;
+                
+                // Set delivery date if available
+                if (data.delivery_date) {
+                    const deliveryDate = new Date(data.delivery_date);
+                    const orderDateObj = orderDate ? new Date(orderDate) : new Date();
+                    const daysDiff = Math.ceil((deliveryDate - orderDateObj) / (1000 * 60 * 60 * 24));
+                    if (daysDiff > 0) {
+                        document.getElementById('{{ form.days_to_mfg.id_for_label }}').value = daysDiff;
+                    }
+                }
+                
+                // Set remarks and payment terms separately
+                document.getElementById('{{ form.remarks.id_for_label }}').value = data.remarks || '';
+                document.getElementById('{{ form.payment_terms.id_for_label }}').value = data.payment_terms || '';
+
+                // Clear existing items and add extracted items
+                itemsTbody.innerHTML = '';
+                itemCounter = 0;
+                
+                if (data.items && data.items.length > 0) {
+                    data.items.forEach(item => {
+                        const itemData = {
+                            item_name: item.material_description || item.item_name || '',
+                            quantity: item.quantity || 0,
+                            price: item.unit_price || item.price || 0,
+                            amount: item.line_total || item.amount || 0
+                        };
+                        
+                        // Add material code to item name if available
+                        if (item.material_code) {
+                            itemData.item_name = `[${item.material_code}] ${itemData.item_name}`;
+                        }
+                        
+                        addItemRow(itemData);
+                    });
+                } else {
+                    // Add one empty row if no items extracted
+                    addItemRow();
+                }
+                
+                // Recalculate totals
+                calculateTotalAmount();
+
+                // Match Customer Name in Autocomplete
+                if (data.customer_name) {
+                    customerSelect.value = data.customer_name;
+                    // Trigger search to find matching customer
+                    searchCustomers(data.customer_name);
+                }
+
+                // UI Reset
+                uploadPoCard.style.display = 'none';
+                uploadPoBtn.className = 'btn btn-success btn-sm';
+                uploadPoBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Data Extracted';
+                
+                // Recalculate Manufacturing dates
+                calculateDates();
+                
+                // Show success message with extracted items count
+                const itemsCount = data.items ? data.items.length : 0;
+                if (itemsCount > 0) {
+                    fileName.innerHTML = `<small class="text-success"><i class="bi bi-check-circle"></i> Extracted ${itemsCount} items successfully!</small>`;
+                    fileName.style.display = 'block';
+                }
+            } else {
+                fileError.innerText = result.error;
+                fileError.style.display = 'block';
+                uploadBtn.disabled = false;
+                uploadBtn.innerText = 'Extract Data';
+            }
+        })
+        .catch(err => {
+            console.error('Extraction Error:', err);
+            uploadBtn.disabled = false;
+        });
+    });
+
+    // --- Existing Calculation Logic ---
     function calculateDates() {
         const orderDate = orderDateInput.value;
         const mfgDays = parseInt(mfgDaysInput.value);
-        
         if (orderDate && mfgDays && mfgDays > 0) {
             // Calculate delivery date
             const orderDateObj = new Date(orderDate);
             const deliveryDateObj = new Date(orderDateObj);
             deliveryDateObj.setDate(deliveryDateObj.getDate() + mfgDays);
-            
+
             // Format delivery date
             const deliveryDateStr = deliveryDateObj.toLocaleDateString('en-GB', {
                 day: '2-digit',
@@ -246,15 +522,14 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             deliveryDateDisplay.value = deliveryDateStr;
             deliveryDateDisplay.style.backgroundColor = '#e3f2fd';
-            
+
             // Calculate due days (difference from today)
             const today = new Date();
             today.setHours(0, 0, 0, 0); // Set to midnight for accurate day counting
             deliveryDateObj.setHours(0, 0, 0, 0);
-            
             const timeDiff = deliveryDateObj - today;
             const dueDays = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
-            
+
             if (dueDays > 0) {
                 dueDaysDisplay.value = `${dueDays} days remaining`;
                 dueDaysDisplay.style.backgroundColor = '#d4edda';
@@ -276,21 +551,214 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Add event listeners for date calculations
     orderDateInput.addEventListener('change', calculateDates);
     mfgDaysInput.addEventListener('input', calculateDates);
+    cancelUploadBtn.addEventListener('click', () => uploadPoCard.style.display = 'none');
 
     // Initialize if editing existing order
     {% if is_edit and order_obj %}
-        companyDisplay.value = '{{ order_obj.company.company }}';
+        companyDisplay.value = '{{ order_obj.company.company_name }}';
         companyDisplay.style.backgroundColor = '#e8f5e8';
+        
+        // Set selected customer for editing
+        selectedCustomer = {
+            id: {{ order_obj.company.id }},
+            customer_name: '{{ order_obj.company.customer_name }}',
+            company_name: '{{ order_obj.company.company_name }}'
+        };
+        
         calculateDates();
+        loadExistingItems();
     {% endif %}
 
     // Trigger initial calculation if form has values
-    if (customerSelect.value) {
-        customerSelect.dispatchEvent(new Event('change'));
+    if (selectedCustomerId.value) {
+        // Form has a selected customer, ensure display is updated
+        if (companyDisplay.value) {
+            companyDisplay.style.backgroundColor = '#e8f5e8';
+        }
     }
+
+    // --- Items Management Functions ---
+    function addItemRow(itemData = {}) {
+        itemCounter++;
+        const row = document.createElement('tr');
+        
+        // Calculate amount if not provided but quantity and price are available
+        let amount = parseFloat(itemData.amount) || 0;
+        if (!amount && itemData.quantity && itemData.price) {
+            amount = parseFloat(itemData.quantity) * parseFloat(itemData.price);
+        }
+        
+        row.innerHTML = `
+            <td class="text-center">${itemCounter}</td>
+            <td>
+                <input type="text" class="form-control item-name" placeholder="Enter item name" 
+                       value="${itemData.item_name || ''}" required>
+            </td>
+            <td>
+                <input type="number" class="form-control item-quantity" placeholder="Qty" 
+                       value="${itemData.quantity || ''}" step="0.01" min="0" required>
+            </td>
+            <td>
+                <input type="number" class="form-control item-price" placeholder="Price" 
+                       value="${itemData.price || itemData.unit_price || ''}" step="0.01" min="0" required>
+            </td>
+            <td>
+                <input type="text" class="form-control item-amount" readonly 
+                       value="₹${amount.toFixed(2)}">
+            </td>
+            <td class="text-center">
+                <button type="button" class="btn btn-sm btn-danger remove-item-btn">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </td>
+        `;
+        
+        itemsTbody.appendChild(row);
+        
+        // Add event listeners for calculation
+        const qtyInput = row.querySelector('.item-quantity');
+        const priceInput = row.querySelector('.item-price');
+        const amountInput = row.querySelector('.item-amount');
+        const removeBtn = row.querySelector('.remove-item-btn');
+        
+        function calculateRowAmount() {
+            const qty = parseFloat(qtyInput.value) || 0;
+            const price = parseFloat(priceInput.value) || 0;
+            const amount = qty * price;
+            amountInput.value = `₹${amount.toFixed(2)}`;
+            calculateTotalAmount();
+        }
+        
+        qtyInput.addEventListener('input', calculateRowAmount);
+        priceInput.addEventListener('input', calculateRowAmount);
+        
+        removeBtn.addEventListener('click', function() {
+            row.remove();
+            calculateTotalAmount();
+            updateRowNumbers();
+        });
+        
+        // Initial calculation if editing or data provided
+        if (amount > 0 || (itemData.quantity && itemData.price)) {
+            calculateRowAmount();
+        }
+    }
+    
+    function calculateTotalAmount() {
+        let total = 0;
+        const amountInputs = document.querySelectorAll('.item-amount');
+        amountInputs.forEach(input => {
+            const value = input.value.replace('₹', '').replace(',', '');
+            total += parseFloat(value) || 0;
+        });
+        
+        totalAmountDisplay.textContent = `₹${total.toFixed(2)}`;
+        
+        // Update the main order value field
+        if (orderValueInput) {
+            orderValueInput.value = total.toFixed(2);
+        }
+    }
+    
+    function updateRowNumbers() {
+        const rows = itemsTbody.querySelectorAll('tr');
+        rows.forEach((row, index) => {
+            row.querySelector('td:first-child').textContent = index + 1;
+        });
+        itemCounter = rows.length;
+    }
+    
+    function getItemsData() {
+        const items = [];
+        const rows = itemsTbody.querySelectorAll('tr');
+        
+        rows.forEach(row => {
+            const itemName = row.querySelector('.item-name').value.trim();
+            const quantity = row.querySelector('.item-quantity').value;
+            const price = row.querySelector('.item-price').value;
+            
+            if (itemName && quantity && price) {
+                items.push({
+                    item_name: itemName,
+                    quantity: parseFloat(quantity),
+                    price: parseFloat(price)
+                });
+            }
+        });
+        
+        return items;
+    }
+    
+    function loadExistingItems() {
+        // Load items if editing existing purchase order
+        {% if is_edit and order_obj %}
+            console.log('Loading existing items for PO ID: {{ order_obj.id }}');
+            fetch(`{% url 'dashboard:get_purchase_order_items_ajax' %}?purchase_order_id={{ order_obj.id }}`)
+                .then(response => {
+                    console.log('Response status:', response.status);
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Items data received:', data);
+                    if (data.success && data.items && data.items.length > 0) {
+                        console.log(`Loading ${data.items.length} items`);
+                        // Clear existing rows first
+                        itemsTbody.innerHTML = '';
+                        itemCounter = 0;
+                        
+                        data.items.forEach(item => {
+                            console.log('Adding item:', item);
+                            addItemRow(item);
+                        });
+                        calculateTotalAmount();
+                    } else {
+                        console.log('No items found or error:', data);
+                        // Add one empty row if no items
+                        addItemRow();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading items:', error);
+                    // Add one empty row on error
+                    addItemRow();
+                });
+        {% else %}
+            // Add one empty row for new orders
+            addItemRow();
+        {% endif %}
+    }
+    
+    // Event Listeners
+    addItemBtn.addEventListener('click', () => addItemRow());
+    
+    // Form submission handler to save items
+    document.getElementById('po-form').addEventListener('submit', function(e) {
+        const items = getItemsData();
+        
+        console.log('Form submission - Items data:', items);
+        
+        // Validate that at least one item exists
+        if (items.length === 0) {
+            e.preventDefault();
+            alert('Please add at least one item to the purchase order.');
+            return false;
+        }
+        
+        // Store items data in a hidden field or handle via AJAX after form submission
+        // For now, we'll handle this in the view after the PO is saved
+        const itemsInput = document.createElement('input');
+        itemsInput.type = 'hidden';
+        itemsInput.name = 'items_data';
+        itemsInput.value = JSON.stringify(items);
+        this.appendChild(itemsInput);
+        
+        console.log('Items data added to form:', JSON.stringify(items));
+    });
+    
+    // Add initial item row
+    // addItemRow(); // Removed - loadExistingItems will handle this
 });
 </script>
 
@@ -310,10 +778,23 @@ document.addEventListener('DOMContentLoaded', function() {
 .edit-indicator {
     background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
     border-left-color: #2196f3;
+    padding: 10px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
 }
 
 .user-initial {
     background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
+    width: 40px;
+    height: 40px;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-weight: bold;
 }
 
 /* Status color indicators */
@@ -335,6 +816,158 @@ document.addEventListener('DOMContentLoaded', function() {
 
 .form-control[style*="background-color: #fff3cd"] {
     border-color: #ffc107 !important;
+}
+
+/* Style indicators for filled fields */
+.form-control[value]:not([value=""]) {
+    border-color: #2196f3;
+}
+
+#uploadPoCard { 
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15); 
+    border: 1px solid #dee2e6; 
+}
+
+/* Error message styling */
+.error-msg {
+    color: #dc3545;
+    font-size: 0.875em;
+    margin-top: 0.25rem;
+}
+
+/* Items Section Styles */
+.items-section {
+    margin-top: 2rem;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    overflow: hidden;
+}
+
+.section-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.section-header h5 {
+    margin: 0;
+    color: #495057;
+    font-weight: 600;
+}
+
+.items-table-container {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+#items-table {
+    margin: 0;
+}
+
+#items-table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    color: #495057;
+    border-bottom: 2px solid #dee2e6;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+#items-table td {
+    vertical-align: middle;
+}
+
+.item-name, .item-quantity, .item-price {
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+    padding: 0.375rem 0.75rem;
+}
+
+.item-amount {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    color: #495057;
+}
+
+.remove-item-btn {
+    padding: 0.25rem 0.5rem;
+}
+
+#total-amount {
+    font-size: 1.1rem;
+    color: #28a745;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .items-table-container {
+        overflow-x: auto;
+    }
+    
+    #items-table {
+        min-width: 600px;
+    }
+}
+
+/* Autocomplete Dropdown Styles */
+.autocomplete-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ced4da;
+    border-top: none;
+    border-radius: 0 0 0.375rem 0.375rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+}
+
+.autocomplete-item {
+    padding: 0.75rem;
+    cursor: pointer;
+    border-bottom: 1px solid #f8f9fa;
+    transition: background-color 0.2s;
+}
+
+.autocomplete-item:hover,
+.autocomplete-item.selected {
+    background-color: #e3f2fd;
+}
+
+.autocomplete-item:last-child {
+    border-bottom: none;
+}
+
+.autocomplete-item .customer-name {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 0.25rem;
+}
+
+.autocomplete-item .company-name {
+    font-size: 0.875rem;
+    color: #6c757d;
+}
+
+/* Make the customer input container relative for dropdown positioning */
+.form-group {
+    position: relative;
+}
+
+/* Style the customer input to look more like a search field */
+#customer-select {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m11.25 11.25 3 3m-3-3a6 6 0 1 0-12 0 6 6 0 0 0 12 0z'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 16px 12px;
+    padding-right: 2.5rem;
 }
 </style>
 {% endblock %}

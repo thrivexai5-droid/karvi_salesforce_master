@@ -34,17 +34,16 @@
             <form method="post" class="simple-form" id="invoice-form">
                 {% csrf_token %}
                 
-                <!-- Invoice Number and Date Row -->
+                <!-- Invoice Date Row -->
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="{{ form.invoice_number.id_for_label }}">
-                            <i class="bi bi-receipt"></i> Invoice Number *
+                        <label for="invoice-number-display">
+                            <i class="bi bi-receipt"></i> Invoice Number (Auto-generated)
                         </label>
-                        {{ form.invoice_number }}
-                        {% if form.invoice_number.errors %}
-                            <div class="error-msg">{{ form.invoice_number.errors.0 }}</div>
-                        {% endif %}
-                        <small class="form-text text-muted">Enter invoice number manually</small>
+                        <input type="text" id="invoice-number-display" class="form-control" readonly 
+                               placeholder="Will be auto-generated as KEC/051/2526" 
+                               value="{% if is_edit and invoice_obj %}{{ invoice_obj.invoice_number }}{% else %}Will be auto-generated{% endif %}">
+                        <small class="form-text text-muted">Auto-generated in format KEC/sequence/fiscal-year (April 1st to March 31st)</small>
                     </div>
                     
                     <div class="form-group">
@@ -55,7 +54,7 @@
                         {% if form.invoice_date.errors %}
                             <div class="error-msg">{{ form.invoice_date.errors.0 }}</div>
                         {% endif %}
-                        <small class="form-text text-muted">Enter invoice date manually</small>
+                        <small class="form-text text-muted">{% if is_edit %}Edit invoice date as needed{% else %}Current date set by default, change if needed{% endif %}</small>
                     </div>
                 </div>
 
@@ -66,10 +65,12 @@
                             <i class="bi bi-person"></i> Customer *
                         </label>
                         {{ form.customer_select }}
+                        {{ form.selected_customer_id }}
+                        <div id="customer-dropdown" class="autocomplete-dropdown" style="display: none;"></div>
                         {% if form.customer_select.errors %}
                             <div class="error-msg">{{ form.customer_select.errors.0 }}</div>
                         {% endif %}
-                        <small class="form-text text-muted">Select customer from database</small>
+                        <small class="form-text text-muted">Start typing to search for customers</small>
                     </div>
                     
                     <div class="form-group">
@@ -120,8 +121,8 @@
                         <label for="payment-due-display">
                             <i class="bi bi-calendar-event"></i> Payment Due Date (Auto-calculated)
                         </label>
-                        <input type="text" id="payment-due-display" class="form-control" readonly placeholder="GRN Date + 15 days">
-                        <small class="form-text text-muted">Auto-calculated: GRN Date + 15 days</small>
+                        <input type="text" id="payment-due-display" class="form-control" readonly placeholder="GRN Date + Payment Terms from PO">
+                        <small class="form-text text-muted">Auto-calculated: GRN Date + Payment Terms from selected Purchase Order</small>
                     </div>
                 </div>
 
@@ -165,6 +166,8 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const customerSelect = document.getElementById('{{ form.customer_select.id_for_label }}');
+    const selectedCustomerId = document.getElementById('{{ form.selected_customer_id.id_for_label }}');
+    const customerDropdown = document.getElementById('customer-dropdown');
     const companyDisplay = document.getElementById('company-display');
     const purchaseOrderSelect = document.getElementById('{{ form.purchase_order.id_for_label }}');
     const orderValueDisplay = document.getElementById('order-value-display');
@@ -172,30 +175,138 @@ document.addEventListener('DOMContentLoaded', function() {
     const paymentDueDisplay = document.getElementById('payment-due-display');
     const dueDaysDisplay = document.getElementById('due-days-display');
 
-    // Auto-fill company and purchase orders when customer is selected
-    customerSelect.addEventListener('change', function() {
-        const customerId = this.value;
-        if (customerId) {
-            // First, fetch company name based on customer selection
-            fetch(`{% url 'dashboard:get_contact_data_ajax' %}?contact_id=${customerId}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Update company name
-                        companyDisplay.value = data.company_name;
-                        companyDisplay.style.backgroundColor = '#e8f5e8';
-                    } else {
-                        companyDisplay.value = 'Error loading company';
-                        companyDisplay.style.backgroundColor = '#f8d7da';
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    companyDisplay.value = 'Error loading company';
-                    companyDisplay.style.backgroundColor = '#f8d7da';
-                });
+    // --- Autocomplete Variables ---
+    let searchTimeout;
+    let selectedCustomer = null;
+
+    // --- Customer Autocomplete Functionality ---
+    function searchCustomers(query) {
+        if (query.length < 2) {
+            customerDropdown.style.display = 'none';
+            return;
+        }
+        
+        fetch(`{% url 'dashboard:search_customers_ajax' %}?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.customers.length > 0) {
+                    showCustomerDropdown(data.customers);
+                } else {
+                    customerDropdown.style.display = 'none';
+                }
+            })
+            .catch(error => {
+                console.error('Error searching customers:', error);
+                customerDropdown.style.display = 'none';
+            });
+    }
+    
+    function showCustomerDropdown(customers) {
+        customerDropdown.innerHTML = '';
+        
+        customers.forEach(customer => {
+            const item = document.createElement('div');
+            item.className = 'autocomplete-item';
+            item.innerHTML = `
+                <div class="customer-name">${customer.customer_name}</div>
+                <div class="company-name">${customer.company_name}</div>
+            `;
+            item.addEventListener('click', () => selectCustomer(customer));
+            customerDropdown.appendChild(item);
+        });
+        
+        customerDropdown.style.display = 'block';
+    }
+    
+    function selectCustomer(customer) {
+        selectedCustomer = customer;
+        customerSelect.value = customer.customer_name;
+        selectedCustomerId.value = customer.id;
+        customerDropdown.style.display = 'none';
+        
+        // Auto-fill company field
+        companyDisplay.value = customer.company_name;
+        companyDisplay.style.backgroundColor = '#e8f5e8';
+        
+        // Load purchase orders for this customer
+        loadPurchaseOrdersForCustomer(customer.id);
+    }
+    
+    // Customer input event listeners
+    customerSelect.addEventListener('input', function() {
+        const query = this.value.trim();
+        
+        // Clear previous timeout
+        clearTimeout(searchTimeout);
+        
+        // Clear selected customer if input changes
+        if (!selectedCustomer || this.value !== selectedCustomer.customer_name) {
+            selectedCustomer = null;
+            selectedCustomerId.value = '';
+            companyDisplay.value = '';
+            companyDisplay.style.backgroundColor = '';
             
-            // Then, fetch purchase orders for this customer (using customer_id as company_id)
+            // Clear purchase orders
+            purchaseOrderSelect.innerHTML = '<option value="">Select Purchase Order</option>';
+            orderValueDisplay.value = '';
+            orderValueDisplay.style.backgroundColor = '';
+        }
+        
+        // Set timeout for search
+        searchTimeout = setTimeout(() => {
+            searchCustomers(query);
+        }, 300); // 300ms delay
+    });
+    
+    customerSelect.addEventListener('focus', function() {
+        if (this.value.length >= 2) {
+            searchCustomers(this.value);
+        }
+    });
+    
+    // Hide dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!customerSelect.contains(e.target) && !customerDropdown.contains(e.target)) {
+            customerDropdown.style.display = 'none';
+        }
+    });
+    
+    // Handle keyboard navigation
+    customerSelect.addEventListener('keydown', function(e) {
+        const items = customerDropdown.querySelectorAll('.autocomplete-item');
+        let selectedIndex = -1;
+        
+        // Find currently selected item
+        items.forEach((item, index) => {
+            if (item.classList.contains('selected')) {
+                selectedIndex = index;
+            }
+        });
+        
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            selectedIndex = Math.max(selectedIndex - 1, 0);
+        } else if (e.key === 'Enter' && selectedIndex >= 0) {
+            e.preventDefault();
+            items[selectedIndex].click();
+            return;
+        } else if (e.key === 'Escape') {
+            customerDropdown.style.display = 'none';
+            return;
+        }
+        
+        // Update selected item
+        items.forEach((item, index) => {
+            item.classList.toggle('selected', index === selectedIndex);
+        });
+    });
+
+    // Load purchase orders for selected customer
+    function loadPurchaseOrdersForCustomer(customerId) {
+        if (customerId) {
             fetch(`{% url 'dashboard:get_purchase_orders_by_contact_ajax' %}?contact_id=${customerId}`)
                 .then(response => response.json())
                 .then(data => {
@@ -220,14 +331,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     console.error('Error:', error);
                     purchaseOrderSelect.innerHTML = '<option value="">Error loading purchase orders</option>';
                 });
-        } else {
-            companyDisplay.value = '';
-            companyDisplay.style.backgroundColor = '';
-            purchaseOrderSelect.innerHTML = '<option value="">Select Purchase Order</option>';
-            orderValueDisplay.value = '';
-            orderValueDisplay.style.backgroundColor = '';
         }
-    });
+    }
 
     // Auto-fill order value when purchase order is selected
     purchaseOrderSelect.addEventListener('change', function() {
@@ -239,19 +344,28 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (data.success) {
                         orderValueDisplay.value = `₹${data.order_value}`;
                         orderValueDisplay.style.backgroundColor = '#e3f2fd';
+                        
+                        // Store payment terms for calculation
+                        purchaseOrderSelect.dataset.paymentTerms = data.payment_terms;
+                        
+                        // Recalculate payment dates if GRN date is already set
+                        calculatePaymentDates();
                     } else {
                         orderValueDisplay.value = 'Error loading value';
                         orderValueDisplay.style.backgroundColor = '#f8d7da';
+                        purchaseOrderSelect.dataset.paymentTerms = '15'; // Default fallback
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
                     orderValueDisplay.value = 'Error loading value';
                     orderValueDisplay.style.backgroundColor = '#f8d7da';
+                    purchaseOrderSelect.dataset.paymentTerms = '15'; // Default fallback
                 });
         } else {
             orderValueDisplay.value = '';
             orderValueDisplay.style.backgroundColor = '';
+            purchaseOrderSelect.dataset.paymentTerms = '';
         }
     });
 
@@ -260,10 +374,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const grnDate = grnDateInput.value;
         
         if (grnDate) {
-            // Calculate payment due date (GRN Date + 15 days)
+            // Get payment terms from selected purchase order, default to 15 days
+            const paymentTerms = parseInt(purchaseOrderSelect.dataset.paymentTerms) || 15;
+            
+            // Calculate payment due date (GRN Date + Payment Terms)
             const grnDateObj = new Date(grnDate);
             const paymentDueDateObj = new Date(grnDateObj);
-            paymentDueDateObj.setDate(paymentDueDateObj.getDate() + 15);
+            paymentDueDateObj.setDate(paymentDueDateObj.getDate() + paymentTerms);
             
             // Format payment due date
             const paymentDueDateStr = paymentDueDateObj.toLocaleDateString('en-GB', {
@@ -271,7 +388,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 month: 'short',
                 year: 'numeric'
             });
-            paymentDueDisplay.value = paymentDueDateStr;
+            paymentDueDisplay.value = `${paymentDueDateStr} (${paymentTerms} days)`;
             paymentDueDisplay.style.backgroundColor = '#e3f2fd';
             
             // Calculate due days (difference from today)
@@ -312,12 +429,32 @@ document.addEventListener('DOMContentLoaded', function() {
         companyDisplay.style.backgroundColor = '#e8f5e8';
         orderValueDisplay.value = '₹{{ invoice_obj.order_value }}';
         orderValueDisplay.style.backgroundColor = '#e3f2fd';
+        
+        // Set payment terms from the purchase order for editing
+        {% if invoice_obj.purchase_order.payment_terms %}
+            purchaseOrderSelect.dataset.paymentTerms = '{{ invoice_obj.purchase_order.payment_terms }}';
+        {% else %}
+            purchaseOrderSelect.dataset.paymentTerms = '15';
+        {% endif %}
+        
+        // Set selected customer for editing
+        selectedCustomer = {
+            id: {{ invoice_obj.company.id }},
+            customer_name: '{{ invoice_obj.company.customer_name }}',
+            company_name: '{{ invoice_obj.company.company }}'
+        };
+        
         calculatePaymentDates();
     {% endif %}
 
     // Trigger initial calculation if form has values
-    if (customerSelect.value) {
-        customerSelect.dispatchEvent(new Event('change'));
+    if (selectedCustomerId.value) {
+        // Form has a selected customer, ensure display is updated
+        if (companyDisplay.value) {
+            companyDisplay.style.backgroundColor = '#e8f5e8';
+        }
+        // Load purchase orders for the selected customer
+        loadPurchaseOrdersForCustomer(selectedCustomerId.value);
     }
 });
 </script>
@@ -368,6 +505,63 @@ document.addEventListener('DOMContentLoaded', function() {
 .form-text {
     font-size: 0.875rem;
     margin-top: 0.25rem;
+}
+
+/* Autocomplete Dropdown Styles */
+.autocomplete-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ced4da;
+    border-top: none;
+    border-radius: 0 0 0.375rem 0.375rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+}
+
+.autocomplete-item {
+    padding: 0.75rem;
+    cursor: pointer;
+    border-bottom: 1px solid #f8f9fa;
+    transition: background-color 0.2s;
+}
+
+.autocomplete-item:hover,
+.autocomplete-item.selected {
+    background-color: #e3f2fd;
+}
+
+.autocomplete-item:last-child {
+    border-bottom: none;
+}
+
+.autocomplete-item .customer-name {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 0.25rem;
+}
+
+.autocomplete-item .company-name {
+    font-size: 0.875rem;
+    color: #6c757d;
+}
+
+/* Make the customer input container relative for dropdown positioning */
+.form-group {
+    position: relative;
+}
+
+/* Style the customer input to look more like a search field */
+#customer-select {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m11.25 11.25 3 3m-3-3a6 6 0 1 0-12 0 6 6 0 0 0 12 0z'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 16px 12px;
+    padding-right: 2.5rem;
 }
 </style>
 {% endblock %}

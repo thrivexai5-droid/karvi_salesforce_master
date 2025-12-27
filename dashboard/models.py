@@ -188,7 +188,7 @@ class Contact(models.Model):
 
 class PurchaseOrder(models.Model):
     
-    po_number = models.CharField(max_length=50, unique=True, verbose_name="PO Number")
+    po_number = models.CharField(max_length=50, verbose_name="PO Number")
     
  
     order_date = models.DateField(verbose_name="Order Date")
@@ -213,6 +213,14 @@ class PurchaseOrder(models.Model):
     
      
     remarks = models.TextField(blank=True, null=True, verbose_name="Remarks")
+    
+    # Payment Terms (in days)
+    payment_terms = models.PositiveIntegerField(
+        blank=True, 
+        null=True, 
+        verbose_name="Payment Terms (Days)",
+        help_text="Enter payment terms in days (e.g., 45 for 45 days)"
+    )
     
     
     sales_person = models.ForeignKey(
@@ -327,6 +335,12 @@ class PurchaseOrder(models.Model):
         else:
             return f"{abs(self.due_days)} days overdue"
     
+    def get_payment_terms_display(self):
+        """Get formatted payment terms display text"""
+        if self.payment_terms:
+            return f"{self.payment_terms} days"
+        return "Not specified"
+    
     def __str__(self):
         return f"PO-{self.po_number} - {self.company.company} - {self.customer_name}"
     
@@ -336,13 +350,79 @@ class PurchaseOrder(models.Model):
         ordering = ['-created_at']
 
 
+class PurchaseOrderItem(models.Model):
+    """Purchase Order Item model for storing individual items in a purchase order"""
+    
+    purchase_order = models.ForeignKey(
+        PurchaseOrder,
+        on_delete=models.CASCADE,
+        related_name='items',
+        verbose_name="Purchase Order"
+    )
+    
+    material_code = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        verbose_name="Material Code",
+        help_text="Item/Material code or SKU"
+    )
+    
+    item_name = models.CharField(
+        max_length=200,
+        verbose_name="Item Name",
+        help_text="Enter item name"
+    )
+    
+    quantity = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        verbose_name="Quantity",
+        help_text="Enter quantity"
+    )
+    
+    price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        verbose_name="Price",
+        help_text="Enter price per unit"
+    )
+    
+    amount = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        verbose_name="Amount",
+        help_text="Auto-calculated: Quantity × Price",
+        editable=False
+    )
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def save(self, *args, **kwargs):
+        # Auto-calculate amount
+        self.amount = self.quantity * self.price
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        code_prefix = f"[{self.material_code}] " if self.material_code else ""
+        return f"{code_prefix}{self.item_name} - Qty: {self.quantity} - ₹{self.amount}"
+    
+    class Meta:
+        verbose_name = "Purchase Order Item"
+        verbose_name_plural = "Purchase Order Items"
+        ordering = ['id']
+
+
 class Invoice(models.Model):
-    # Invoice Number - Manual Entry
+    # Invoice Number - Auto-generated
     invoice_number = models.CharField(
         max_length=50, 
         unique=True, 
         verbose_name="Invoice Number",
-        help_text="Enter invoice number manually"
+        help_text="Auto-generated in format KEC/051/2526",
+        blank=True  # Allow blank since it's auto-generated
     )
     
     # Invoice Date - Manual Entry
@@ -392,10 +472,10 @@ class Invoice(models.Model):
         help_text="Enter GRN date manually"
     )
     
-    # Payment Due Date - Auto-calculated (GRN Date + 15 days)
+    # Payment Due Date - Auto-calculated (GRN Date + Payment Terms from Purchase Order)
     payment_due_date = models.DateField(
         verbose_name="Payment Due Date",
-        help_text="Auto-calculated: GRN Date + 15 days",
+        help_text="Auto-calculated: GRN Date + Payment Terms from selected Purchase Order",
         null=True,  # Allow null since it's auto-calculated
         blank=True  # Allow blank since it's auto-calculated
     )
@@ -416,11 +496,34 @@ class Invoice(models.Model):
         help_text="Enter remarks manually (optional)"
     )
     
+    # Status - Invoice status tracking
+    STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('sent', 'Sent'),
+        ('invoiced', 'Invoiced'),
+        ('paid', 'Paid'),
+        ('overdue', 'Overdue'),
+        ('cancelled', 'Cancelled'),
+    ]
+    
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='draft',
+        verbose_name="Invoice Status",
+        help_text="Current status of the invoice"
+    )
+    
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
     def save(self, *args, **kwargs):
+        # Auto-generate invoice number if not provided
+        if not self.invoice_number:
+            from .services import generate_invoice_number
+            self.invoice_number = generate_invoice_number()
+        
         # Auto-fetch customer name from selected company
         if self.company:
             self.customer_name = self.company.customer_name
@@ -429,9 +532,11 @@ class Invoice(models.Model):
         if self.purchase_order:
             self.order_value = self.purchase_order.order_value
         
-        # Auto-calculate payment due date (GRN Date + 15 days)
-        if self.grn_date:
-            self.payment_due_date = self.grn_date + timedelta(days=15)
+        # Auto-calculate payment due date based on purchase order payment terms
+        if self.grn_date and self.purchase_order:
+            # Use payment terms from purchase order, default to 15 days if not set
+            payment_days = self.purchase_order.payment_terms or 15
+            self.payment_due_date = self.grn_date + timedelta(days=payment_days)
         
         # Auto-calculate due days
         if self.payment_due_date:
@@ -554,10 +659,12 @@ class InquiryHandler(models.Model):
         blank=True
     )
     
-    # 4. Lead Description - Manual entry
+    # 4. Lead Description - Manual entry (removed from form, made optional)
     lead_description = models.TextField(
         verbose_name="Lead Description",
-        help_text="Enter lead description manually"
+        help_text="Enter lead description manually",
+        blank=True,
+        default=""
     )
     
     # 5. Company - Dropdown select from database
@@ -639,14 +746,32 @@ class InquiryHandler(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
+    def clean(self):
+        """Model-level validation"""
+        from django.core.exceptions import ValidationError
+        
+        # Validate that date_of_quote is provided
+        if not self.date_of_quote:
+            raise ValidationError({
+                'date_of_quote': 'Date of Quote is required and cannot be empty.'
+            })
+        
+        # Don't call super().clean() to avoid validating removed form fields
+        # super().clean()
+    
     def save(self, *args, **kwargs):
+        # Run specific validation (not full_clean to avoid form field conflicts)
+        self.clean()
+        
         # Auto-generate Create ID if not exists
         if not self.create_id:
             self.create_id = self.generate_create_id()
         
         # Auto-fetch customer name from selected company
         if self.company:
-            self.customer_name = self.company.customer_name
+            # Ensure customer_name is properly set (fallback to contact_name if customer_name is empty)
+            customer_name = self.company.customer_name or self.company.contact_name
+            self.customer_name = customer_name
         
         # Auto-generate Opportunity ID based on status
         self.opportunity_id = self.generate_opportunity_id()
@@ -824,3 +949,70 @@ class InquiryItem(models.Model):
         verbose_name = "Inquiry Item"
         verbose_name_plural = "Inquiry Items"
         ordering = ['id']
+
+class Quotation(models.Model):
+    STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('generated', 'Generated'),
+        ('sent', 'Sent'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+    
+    # Basic Information
+    quote_number = models.CharField(max_length=50, unique=True)
+    revision = models.CharField(max_length=20, default='Rev A')
+    date_created = models.DateTimeField(auto_now_add=True)
+    quotation_date = models.CharField(max_length=100)  # Store as text like "Wednesday, September 24, 2025"
+    
+    # Customer Information
+    to_person = models.CharField(max_length=200)
+    firm = models.CharField(max_length=300)
+    address = models.TextField()
+    
+    # Terms
+    payment_terms = models.TextField()
+    delivery_terms = models.TextField()
+    
+    # Scope
+    scope_description = models.CharField(max_length=300)
+    scope_line_1 = models.CharField(max_length=300)
+    scope_line_2 = models.CharField(max_length=300)
+    
+    # Fixtures Data (stored as JSON)
+    fixtures_data = models.JSONField(default=list)
+    fixtures_count = models.IntegerField(default=0)
+    
+    # Status and Metadata
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    file_path = models.CharField(max_length=500, blank=True, null=True)  # Path to generated DOCX file
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Quotation'
+        verbose_name_plural = 'Quotations'
+    
+    def __str__(self):
+        return f"{self.quote_number} - {self.firm}"
+    
+    def get_status_class(self):
+        """Return Bootstrap class for status badge"""
+        status_classes = {
+            'draft': 'warning',
+            'generated': 'success',
+            'sent': 'info',
+            'approved': 'primary',
+            'rejected': 'danger',
+        }
+        return status_classes.get(self.status, 'secondary')
+    
+    def save(self, *args, **kwargs):
+        # Update fixtures count when saving
+        if isinstance(self.fixtures_data, list):
+            self.fixtures_count = len(self.fixtures_data)
+        super().save(*args, **kwargs)

@@ -43,6 +43,15 @@ urlpatterns = [
     path('additional-supply/', views.additional_supply_management_view, name='additional_supply_management'),
     path('additional-supply/edit/<int:inquiry_id>/', views.additional_supply_edit_view, name='additional_supply_edit'),
     
+    # Quotation Management URLs
+    path('quotation/', views.quotation_view, name='quotation_generator'),
+    path('quotation/generate/', views.generate_quotation, name='generate_quotation'),
+    path('quotation/management/', views.quotation_management_view, name='quotation_management'),
+    path('quotation/view/<int:quotation_id>/', views.quotation_view_details, name='quotation_view'),
+    path('quotation/edit/<int:quotation_id>/', views.quotation_edit, name='quotation_edit'),
+    path('quotation/delete/<int:quotation_id>/', views.quotation_delete, name='quotation_delete'),
+    path('quotation/download/<int:quotation_id>/', views.quotation_download, name='quotation_download'),
+    
     # AJAX endpoints
     path('ajax/get-company-data/', views.get_company_data_ajax, name='get_company_data_ajax'),
     path('ajax/get-contact-data/', views.get_contact_data_ajax, name='get_contact_data_ajax'),
@@ -50,4 +59,9 @@ urlpatterns = [
     path('ajax/get-purchase-order-details/', views.get_purchase_order_details_ajax, name='get_purchase_order_details_ajax'),
     path('ajax/save-inquiry-items/', views.save_inquiry_items_ajax, name='save_inquiry_items_ajax'),
     path('ajax/get-inquiry-items/', views.get_inquiry_items_ajax, name='get_inquiry_items_ajax'),
+    path('ajax/process-po-pdf/', views.process_po_pdf_ajax, name='process_po_pdf_ajax'),
+    path('upload-po-ajax/', views.upload_po_ajax, name='upload_po_ajax'),
+    path('ajax/save-purchase-order-items/', views.save_purchase_order_items_ajax, name='save_purchase_order_items_ajax'),
+    path('ajax/get-purchase-order-items/', views.get_purchase_order_items_ajax, name='get_purchase_order_items_ajax'),
+    path('ajax/search-customers/', views.search_customers_ajax, name='search_customers_ajax'),
 ]

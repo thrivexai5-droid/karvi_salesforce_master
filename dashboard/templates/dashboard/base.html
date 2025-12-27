@@ -9,8 +9,8 @@
     <link rel="icon" type="image/png" href="{% static 'utilts/prime2.png' %}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
-    <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=3.0">
-    <link rel="stylesheet" href="{% static 'css/header-nav.css' %}?v=1.0">
+    <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=3.3">
+    <link rel="stylesheet" href="{% static 'css/header-redesign.css' %}?v=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
@@ -58,9 +58,9 @@
                             </li>
 
                             <li class="nav-item-header">
-                                <a href="javascript:void(0)" class="nav-link-header">
+                                <a href="{% url 'dashboard:quotation_management' %}" class="nav-link-header">
                                     <i class="bi bi-chat-quote"></i>
-                                    <span>Quotation Generation</span>
+                                    <span>Quotations</span>
                                 </a>
                             </li>
 
@@ -163,9 +163,9 @@
                         </a>
                     </li>
                     <li class="nav-item-mobile">
-                        <a href="javascript:void(0)" class="nav-link-mobile">
+                        <a href="{% url 'dashboard:quotation_management' %}" class="nav-link-mobile">
                             <i class="bi bi-chat-quote"></i>
-                            <span>Quotation Generation</span>
+                            <span>Quotations</span>
                         </a>
                     </li>
                     <li class="nav-item-mobile">

@@ -4,23 +4,49 @@
 <div class="container-fluid p-0 m-0" style="width: 100%; max-width: none;"></div>
     <div class="dashboard-layout">
         <!-- Chart 1 - Top Left -->
-        <div class="chart-container shadow-sm">
-            <h6 class="chart-title">Sales Distribution</h6>
+        <div class="card stats-card small-card shadow-sm border-0">
+            <h6 class="chart-title">Operations</h6>
             <div class="chart-wrapper">
                 <div id="apexChart1"></div>
             </div>
         </div>
 
         <!-- Chart 2 - Top Center -->
-        <div class="chart-container shadow-sm">
-            <h6 class="chart-title">User Demographics</h6>
+        <div class="card stats-card small-card shadow-sm border-0">
+            <h6 class="chart-title">Sales</h6>
             <div class="chart-wrapper">
                 <div id="apexChart2"></div>
             </div>
         </div>
 
-        <!-- Value Cards - Top Right (Split into two cards) -->
+        <!-- Value Cards - Top Right (Four cards in a row) -->
         <div class="value-cards-container">
+            <!-- Max Date Card -->
+            <div class="card stats-card small-card shadow-sm border-0">
+                <div class="card-body text-center d-flex flex-column justify-content-center">
+                    <div class="card-icon mx-auto mb-2">
+                        <i class="bi bi-calendar-check"></i>
+                    </div>
+                    <div class="card-content">
+                        <h6 class="card-subtitle text-muted text-uppercase small fw-bold mb-1">Max Date</h6>
+                        <h3 class="card-value fw-bold mb-1">{{ max_date }}</h3>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sustainance Date Card -->
+            <div class="card stats-card small-card shadow-sm border-0">
+                <div class="card-body text-center d-flex flex-column justify-content-center">
+                    <div class="card-icon mx-auto mb-2">
+                        <i class="bi bi-calendar-event"></i>
+                    </div>
+                    <div class="card-content">
+                        <h6 class="card-subtitle text-muted text-uppercase small fw-bold mb-1">Sustainance</h6>
+                        <h3 class="card-value fw-bold mb-1">{{ sustainance_date }}</h3>
+                    </div>
+                </div>
+            </div>
+            
             <!-- Total Value Card -->
             <div class="card stats-card small-card shadow-sm border-0">
                 <div class="card-body text-center d-flex flex-column justify-content-center">
@@ -48,16 +74,13 @@
             </div>
         </div>
 
-        <!-- Chart 3 - Bottom Left -->
-        <div class="chart-container shadow-sm">
+        <!-- Chart 3 - Bottom Left (Expanded) -->
+        <div class="chart-container card stats-card shadow-sm border-0">
             <h6 class="chart-title">Leads chart</h6>
             <div class="chart-wrapper">
                 <div id="apexChart3"></div>
             </div>
         </div>
-
-        <!-- Empty Space - Bottom Center -->
-        <div class="empty-space"></div>
 
         <!-- Large Card - Bottom Right -->
         <div class="card stats-card large-card shadow-sm border-0">
@@ -101,11 +124,20 @@
     // ApexCharts Configuration
     document.addEventListener('DOMContentLoaded', function() {
         
+        // Responsive chart height based on screen size
+        function getChartHeight() {
+            const screenWidth = window.innerWidth;
+            if (screenWidth >= 1280 && screenWidth <= 1440) {
+                return 240; // Laptop screens - compact height
+            }
+            return 280; // Default height for other screens
+        }
+        
         // Common chart options
         const commonOptions = {
             chart: {
-                type: 'pie',
-                height: 280,
+                type: 'donut',
+                height: getChartHeight(),
                 animations: {
                     enabled: true,
                     easing: 'easeinout',
@@ -148,7 +180,7 @@
             plotOptions: {
                 pie: {
                     donut: {
-                        size: '45%'
+                        size: '55%'
                     }
                 }
             },
@@ -174,7 +206,7 @@
             ...commonOptions,
             series: [35, 25, 20],
             labels: ['Sales closed', 'UEOB', 'Collection'],
-            colors: ['#28a745', '#20c997', '#17a2b8']
+            colors: ['#00B0F0', '#FFFF00', '#FF0000']
         };
         const chart1 = new ApexCharts(document.querySelector("#apexChart1"), chart1Options);
         chart1.render();
@@ -184,16 +216,24 @@
             ...commonOptions,
             series: [30, 40, 20],
             labels: ['Sold', 'Sales Gap', 'Further'],
-            colors: ['#007bff', '#6610f2', '#e83e8c']
+            colors: ['#00B0F0', '#FF0000', '#FFFF00']
         };
         const chart2 = new ApexCharts(document.querySelector("#apexChart2"), chart2Options);
         chart2.render();
 
-        // Chart 3 - Leads chart (Bar Chart)
+        // Chart 3 - Leads chart (Bar Chart) - Dynamic Data with responsive height
+        function getBarChartHeight() {
+            const screenWidth = window.innerWidth;
+            if (screenWidth >= 1280 && screenWidth <= 1440) {
+                return 350; // Increased height for laptop screens
+            }
+            return 400; // Increased default height for other screens
+        }
+        
         const chart3Options = {
             chart: {
                 type: 'bar',
-                height: 300,
+                height: getBarChartHeight(),  // Responsive height
                 width: '100%',
                 animations: {
                     enabled: true,
@@ -207,68 +247,126 @@
                     left: 7,
                     blur: 10,
                     opacity: 0.2
+                },
+                toolbar: {
+                    show: false
                 }
             },
             series: [{
-                name: 'Leads',
-                data: [45, 30, 15, 10, 17, 9]
+                name: 'Inquiries',
+                data: {{ inquiry_chart_data.data|safe }}
             }],
             xaxis: {
-                categories: ['Quotation', 'Project Closed', 'Lost', 'GRN', 'Negotiation', 'Dispatch'],
+                categories: {{ inquiry_chart_data.categories|safe }},
                 labels: {
                     style: {
-                        fontSize: '12px',
-                        fontFamily: 'Inter, sans-serif'
-                    }
-                }
+                        fontSize: '11px',  // Slightly smaller font for better fit
+                        fontFamily: 'Inter, sans-serif',
+                        fontWeight: '500'
+                    },
+                    rotate: -45,  // Better rotation angle for readability
+                    rotateAlways: true,  // Always rotate labels
+                    maxHeight: 150,  // Increased max height for rotated labels
+                    trim: false,
+                    hideOverlappingLabels: false,  // Show all labels
+                    offsetY: 10  // Increased vertical offset for better spacing
+                },
+                axisBorder: {
+                    show: true,
+                    color: '#e0e0e0'
+                },
+                axisTicks: {
+                    show: true,
+                    color: '#e0e0e0'
+                },
+                tickAmount: undefined,  // Let ApexCharts determine optimal tick amount
+                tickPlacement: 'on'  // Place ticks on the axis
             },
             yaxis: {
                 labels: {
                     style: {
-                        fontSize: '12px',
-                        fontFamily: 'Inter, sans-serif'
+                        fontSize: '12px',  // Consistent font size
+                        fontFamily: 'Inter, sans-serif',
+                        fontWeight: '500'
+                    }
+                },
+                title: {
+                    text: 'Number of Inquiries',
+                    style: {
+                        fontSize: '13px',
+                        fontFamily: 'Inter, sans-serif',
+                        fontWeight: '600'
                     }
                 }
             },
-            colors: ['#28a745', '#ffc107', '#dc3545', '#6c757d', '#20c997', '#007bff'],
+            colors: ['#2563EB'],
             plotOptions: {
                 bar: {
                     distributed: true,
                     horizontal: false,
-                    columnWidth: '80%',
-                    borderRadius: 4
+                    columnWidth: '60%',  // Adjusted bar width
+                    borderRadius: 4,  // Slightly smaller border radius
+                    dataLabels: {
+                        position: 'top'  // Position data labels on top of bars
+                    }
                 }
             },
             dataLabels: {
                 enabled: true,
                 formatter: function (val) {
-                    return val
+                    return val > 0 ? val : '';  // Only show labels for non-zero values
                 },
                 style: {
-                    fontSize: '12px',
+                    fontSize: '11px',  // Consistent font size
                     fontFamily: 'Inter, sans-serif',
                     fontWeight: 'bold',
-                    colors: ['#fff']
-                }
+                    colors: ['#333']  // Dark color for better contrast
+                },
+                offsetY: -8  // Position labels above bars with more space
             },
             legend: {
                 show: false
             },
             tooltip: {
                 enabled: true,
-                theme: 'dark',
+                theme: 'light',
                 style: {
                     fontSize: '14px',
                     fontFamily: 'Inter, sans-serif'
+                },
+                y: {
+                    formatter: function (val, opts) {
+                        const categoryName = opts.w.globals.categoryLabels[opts.dataPointIndex];
+                        return val + ' inquiries in ' + categoryName + ' status';
+                    }
                 }
             },
             grid: {
+                show: true,
+                borderColor: '#f0f0f0',
+                strokeDashArray: 3,
+                position: 'back',
+                xaxis: {
+                    lines: {
+                        show: false
+                    }
+                },
+                yaxis: {
+                    lines: {
+                        show: true
+                    }
+                },
                 padding: {
-                    left: 10,
-                    right: 10,
-                    top: 10,
-                    bottom: 10
+                    left: 20,  // Increased left padding
+                    right: 20,  // Increased right padding
+                    top: 25,   // Increased top padding for data labels
+                    bottom: 80  // Significantly increased bottom padding for rotated labels
                 }
+            },
+            stroke: {
+                show: true,
+                width: 1,
+                colors: ['transparent']
             }
         };
         const chart3 = new ApexCharts(document.querySelector("#apexChart3"), chart3Options);
@@ -280,14 +378,17 @@
 /* Scoped CSS for Leads chart (apexChart3) full-width rendering */
 #apexChart3 {
     width: 100% !important;
+    height: 100% !important;
 }
 
 #apexChart3 .apexcharts-canvas {
     width: 100% !important;
+    height: 100% !important;
 }
 
 #apexChart3 .apexcharts-inner {
     width: 100% !important;
+    height: 100% !important;
 }
 
 /* Ensure the chart wrapper for bar chart uses full width */
@@ -295,6 +396,145 @@
     width: 100%;
     padding: 0;
     margin: 0;
+    height: 100%;
+}
+
+/* Enhanced styling for dynamic Leads chart with many categories */
+#apexChart3 .apexcharts-xaxis-texts-g text {
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    fill: #495057 !important;
+}
+
+#apexChart3 .apexcharts-yaxis-texts-g text {
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    fill: #495057 !important;
+}
+
+#apexChart3 .apexcharts-datalabel-label {
+    font-size: 12px !important;
+    font-weight: bold !important;
+    fill: #333 !important;
+}
+
+#apexChart3 .apexcharts-datalabels text {
+    font-size: 12px !important;
+    font-weight: bold !important;
+    fill: #333 !important;
+}
+
+/* Improve bar visibility and spacing */
+#apexChart3 .apexcharts-bar-area {
+    stroke-width: 0 !important;
+}
+
+#apexChart3 .apexcharts-series path {
+    stroke-width: 0 !important;
+}
+
+/* Grid line styling for better readability */
+#apexChart3 .apexcharts-gridlines-horizontal line {
+    stroke: #f0f0f0 !important;
+    stroke-dasharray: 3 !important;
+}
+
+#apexChart3 .apexcharts-gridlines-vertical line {
+    stroke: transparent !important;
+}
+
+/* Axis styling */
+#apexChart3 .apexcharts-xaxis-line {
+    stroke: #e0e0e0 !important;
+}
+
+#apexChart3 .apexcharts-yaxis-line {
+    stroke: #e0e0e0 !important;
+}
+
+/* Leads Chart - Enhanced spacing and readability */
+.dashboard-layout > .chart-container:nth-child(4) .chart-wrapper {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 420px !important;  /* Increased min-height for rotated labels */
+}
+
+.dashboard-layout > .chart-container:nth-child(4) #apexChart3 {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.dashboard-layout > .chart-container:nth-child(4) {
+    padding: 1.5rem !important;  /* Increased padding for better spacing */
+}
+
+/* Improve chart title styling */
+.dashboard-layout > .chart-container:nth-child(4) .chart-title {
+    font-size: 1.1rem !important;
+    font-weight: 600 !important;
+    color: #495057 !important;
+    margin-bottom: 1rem !important;
+}
+
+/* Enhanced X-axis label styling for better visibility */
+#apexChart3 .apexcharts-xaxis-texts-g text {
+    font-size: 11px !important;
+    font-weight: 500 !important;
+    fill: #495057 !important;
+    text-anchor: end !important;  /* Anchor text at the end for rotated labels */
+}
+
+/* Ensure X-axis labels have enough space */
+#apexChart3 .apexcharts-xaxis {
+    overflow: visible !important;
+}
+
+#apexChart3 .apexcharts-xaxis-texts-g {
+    overflow: visible !important;
+}
+
+/* Responsive adjustments for Leads chart */
+@media (max-width: 1200px) {
+    #apexChart3 .apexcharts-xaxis-texts-g text {
+        font-size: 10px !important;
+    }
+    
+    #apexChart3 .apexcharts-datalabel-label,
+    #apexChart3 .apexcharts-datalabels text {
+        font-size: 10px !important;
+    }
+    
+    .dashboard-layout > .chart-container:nth-child(4) .chart-wrapper {
+        min-height: 380px !important;
+    }
+}
+
+@media (max-width: 768px) {
+    #apexChart3 .apexcharts-xaxis-texts-g text {
+        font-size: 9px !important;
+    }
+    
+    #apexChart3 .apexcharts-datalabel-label,
+    #apexChart3 .apexcharts-datalabels text {
+        font-size: 9px !important;
+    }
+    
+    .dashboard-layout > .chart-container:nth-child(4) .chart-wrapper {
+        min-height: 350px !important;
+    }
+    
+    .dashboard-layout > .chart-container:nth-child(4) {
+        padding: 1rem !important;
+    }
+    
+    /* On mobile, Leads chart goes back to single column */
+    .dashboard-layout > .chart-container:nth-child(4) { 
+        grid-column: 1 !important;
+    }
+    .dashboard-layout > .card.stats-card.large-card { 
+        grid-column: 1 / 4 !important;
+        grid-row: 3 !important;
+    }
 }
 
 /* Value Cards Container - Two cards side by side */

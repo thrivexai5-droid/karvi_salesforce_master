@@ -26,13 +26,9 @@
     height: 35px;
     border-radius: 50%;
     background: linear-gradient(135deg, #007bff, #0056b3);
-    color: white;
+    color: rgb(10, 3, 3);
     font-size: 0.8rem;
     font-weight: 600;
-}
-
-.user-avatar .index-number {
-    background: linear-gradient(135deg, #28a745, #1e7e34);
 }
 
 .action-buttons {
@@ -84,6 +80,34 @@
     color: #6c757d !important;
     font-size: 0.875rem;
 }
+
+/* Add Button - Icon and Text Alignment */
+.add-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    padding: 0.75rem 1.25rem !important;
+    font-weight: 600 !important;
+    border-radius: 0.5rem !important;
+    transition: all 0.2s ease !important;
+}
+
+.add-btn i {
+    font-size: 1rem !important;
+    line-height: 1 !important;
+    margin: 0 !important;
+}
+
+.add-btn span {
+    font-size: 0.875rem !important;
+    line-height: 1 !important;
+    margin: 0 !important;
+}
+
+.add-btn:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15) !important;
+}
 </style>
 {% endblock %}
 
@@ -96,11 +120,13 @@
             <p class="page-subtitle">Manage customer contacts and company information</p>
         </div>
         <div class="d-flex gap-2">
-            <a href="{% url 'dashboard:company_create' %}" class="btn btn-success">
-                <i class="bi bi-building-add me-2"></i>Add Company
+            <a href="{% url 'dashboard:company_create' %}" class="btn btn-success add-btn">
+                <i class="bi bi-building-add"></i>
+                <span>Add Company</span>
             </a>
-            <a href="{% url 'dashboard:contact_create' %}" class="btn btn-primary">
-                <i class="bi bi-person-plus me-2"></i>Add Contact
+            <a href="{% url 'dashboard:contact_create' %}" class="btn btn-primary add-btn">
+                <i class="bi bi-person-plus"></i>
+                <span>Add Contact</span>
             </a>
         </div>
     </div>
@@ -180,16 +206,7 @@
                                 </td>
                                 {% if view_type == 'companies' %}
                                     <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="user-avatar me-3">
-                                                <div class="index-number" style="width: 35px; height: 35px; font-size: 0.8rem;">
-                                                    <i class="fa-solid fa-building"></i>
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <div class="fw-semibold">{{ item.company_name }}</div>
-                                            </div>
-                                        </div>
+                                        <div class="fw-semibold">{{ item.company_name }}</div>
                                     </td>
                                     <td>
                                         <span class="badge bg-primary">{{ item.city_1 }}</span>
@@ -210,19 +227,10 @@
                                     </td>   
                                 {% else %}
                                     <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="user-avatar me-3">
-                                                <div class="index-number" style="width: 35px; height: 35px; font-size: 0.8rem;">
-                                                    {{ item.contact_name|first|upper }}
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <div class="fw-semibold">{{ item.contact_name }}</div>
-                                                {% if item.customer_name and item.customer_name != item.contact_name %}
-                                                    <small class="text-muted">{{ item.customer_name }}</small>
-                                                {% endif %}
-                                            </div>
-                                        </div>
+                                        <div class="fw-semibold">{{ item.contact_name }}</div>
+                                        {% if item.customer_name and item.customer_name != item.contact_name %}
+                                            <small class="text-muted">{{ item.customer_name }}</small>
+                                        {% endif %}
                                     </td>
                                     <td>
                                         <div>{{ item.email_1 }}</div>
@@ -311,8 +319,9 @@
                             Start by adding your first company.
                         {% endif %}
                     </p>
-                    <a href="{% url 'dashboard:company_create' %}" class="btn btn-success">
-                        <i class="bi bi-building-add me-2"></i>Add New Company
+                    <a href="{% url 'dashboard:company_create' %}" class="btn btn-success add-btn">
+                        <i class="bi bi-building-add"></i>
+                        <span>Add New Company</span>
                     </a>
                 {% else %}
                     <i class="bi bi-people text-muted"></i>
@@ -324,8 +333,9 @@
                             Start by adding your first contact.
                         {% endif %}
                     </p>
-                    <a href="{% url 'dashboard:contact_create' %}" class="btn btn-primary">
-                        <i class="bi bi-person-plus me-2"></i>Add New Contact
+                    <a href="{% url 'dashboard:contact_create' %}" class="btn btn-primary add-btn">
+                        <i class="bi bi-person-plus"></i>
+                        <span>Add New Contact</span>
                     </a>
                 {% endif %}
             </div>
