@@ -156,6 +156,9 @@ Thumbs.db
 
 # Project specific
 DEPLOYMENT_GUIDE.md
+DATABASE_SCHEMA.md
+instructions.txt
+MISTRAL_SETUP.md
 *.docx
 *.pdf
 
