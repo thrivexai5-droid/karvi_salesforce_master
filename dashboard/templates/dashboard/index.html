@@ -1,0 +1,660 @@
+{% extends 'dashboard/base.html' %}
+
+{% block content %}
+<div class="container-fluid p-0 m-0" style="width: 100%; max-width: none;">
+    <div class="dashboard-layout">
+        <!-- Chart 1 - Top Left -->
+        <div class="card stats-card small-card shadow-sm border-0">
+            <h6 class="chart-title">Operations</h6>
+            <div class="chart-wrapper">
+                <div id="apexChart1"></div>
+            </div>
+        </div>
+
+        <!-- Chart 2 - Top Center -->
+        <div class="card stats-card small-card shadow-sm border-0">
+            <h6 class="chart-title">Sales</h6>
+            <div class="chart-wrapper">
+                <div id="apexChart2"></div>
+            </div>
+        </div>
+
+        <!-- Value Cards - Top Right (Four cards in a row) -->
+        <div class="value-cards-container">
+            <!-- Max Date Card -->
+            <div class="card stats-card small-card shadow-sm border-0">
+                <div class="card-body text-center d-flex flex-column justify-content-center">
+                    <div class="card-icon mx-auto mb-2">
+                        <i class="bi bi-calendar-check"></i>
+                    </div>
+                    <div class="card-content">
+                        <h6 class="card-subtitle text-muted text-uppercase small fw-bold mb-1">Payment Due (MAX)</h6>
+                        <h3 class="card-value fw-bold mb-1">{{ max_date }}</h3>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sustainance Date Card -->
+            <div class="card stats-card small-card shadow-sm border-0">
+                <div class="card-body text-center d-flex flex-column justify-content-center">
+                    <div class="card-icon mx-auto mb-2">
+                        <i class="bi bi-calendar-event"></i>
+                    </div>
+                    <div class="card-content">
+                        <h6 class="card-subtitle text-muted text-uppercase small fw-bold mb-1">Sustainance</h6>
+                        <h3 class="card-value fw-bold mb-1">{{ sustainance_date }}</h3>
+                        <small class="text-muted">{{ sustainability_days }} days</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Total Value Card -->
+            <div class="card stats-card small-card shadow-sm border-0">
+                <div class="card-body text-center d-flex flex-column justify-content-center">
+                    <div class="card-icon mx-auto mb-2">
+                        <i class="bi bi-currency-rupee"></i>
+                    </div>
+                    <div class="card-content">
+                        <h6 class="card-subtitle text-muted text-uppercase small fw-bold mb-1">Total Value</h6>
+                        <h3 class="card-value fw-bold mb-1">{{ total_value }}</h3>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- GST Value Card -->
+            <div class="card stats-card small-card shadow-sm border-0">
+                <div class="card-body text-center d-flex flex-column justify-content-center">
+                    <div class="card-icon mx-auto mb-2">
+                        <i class="bi bi-graph-up"></i>
+                    </div>
+                    <div class="card-content">
+                        <h6 class="card-subtitle text-muted text-uppercase small fw-bold mb-1">GST Value</h6>
+                        <h3 class="card-value fw-bold mb-1">{{ gst_value }}</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chart 3 - Bottom Left (Expanded) -->
+        <div class="chart-container card stats-card shadow-sm border-0">
+            <h6 class="chart-title">Leads chart</h6>
+            <div class="chart-wrapper">
+                <div id="apexChart3"></div>
+            </div>
+        </div>
+
+        <!-- Large Card - Bottom Right -->
+        <div class="card stats-card large-card shadow-sm border-0">
+            <div class="card-body">
+                <h6 class="card-title fw-bold mb-4">Financial Sustainability</h6>
+                <div class="stats-grid">
+                    <div class="activity-item mb-3 pb-3 border-bottom">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>Net Revenue</strong>
+                                <small class="d-block text-muted">Total Invoice - Fixed Costs + Additional</small>
+                            </div>
+                            <div class="text-end">
+                                <div class="fw-bold {% if net_revenue_sign == 'negative' %}text-danger{% else %}text-success{% endif %}">
+                                    {% if net_revenue_sign == 'negative' %}-{% endif %}₹{{ net_revenue }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="activity-item mb-3 pb-3 border-bottom">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>Monthly Expenses</strong>
+                                <small class="d-block text-muted">₹{{ daily_burn }}/day burn rate</small>
+                            </div>
+                            <div class="text-end">
+                                <div class="fw-bold">₹{{ monthly_expenses }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="activity-item mb-3 pb-3 border-bottom">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>Sustainability Period</strong>
+                                <small class="d-block text-muted">Days business can sustain ({{ sustainability_status }})</small>
+                            </div>
+                            <div class="text-end">
+                                <div class="fw-bold text-{{ sustainability_color }}">
+                                    {% if sustainability_days > 0 %}{{ sustainability_days }} days{% else %}Critical{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="activity-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>Target Date</strong>
+                                <small class="d-block text-muted">{% if sustainability_days > 0 %}Sustainability end date{% else %}Immediate action required{% endif %}</small>
+                            </div>
+                            <div class="text-end">
+                                <div class="fw-bold text-{{ sustainability_color }}">
+                                    {% if sustainability_days > 0 %}{{ sustainance_date }}{% else %}Today{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+    </div>
+</div>
+
+<script id="dashboard-data" type="application/json">
+{
+    "totalValue": {{ total_value_raw|default:0 }},
+    "paidTotalValue": {{ paid_total_value_raw|default:0 }},
+    "totalValueFormatted": "{{ total_value|default:'0' }}",
+    "paidTotalValueFormatted": "{{ paid_total_value|default:'0' }}",
+    "maxPaymentDueDate": "{{ max_date|default:'—' }}"
+}
+</script>
+
+<script>
+    // Get dynamic data from JSON
+    const dashboardData = JSON.parse(document.getElementById('dashboard-data').textContent);
+    
+    // ApexCharts Configuration
+    document.addEventListener('DOMContentLoaded', function() {
+        
+        // Responsive chart height based on screen size
+        function getChartHeight() {
+            const screenWidth = window.innerWidth;
+            if (screenWidth >= 1280 && screenWidth <= 1440) {
+                return 240; // Laptop screens - compact height
+            }
+            return 280; // Default height for other screens
+        }
+        
+        // Common chart options
+        const commonOptions = {
+            chart: {
+                type: 'donut',
+                height: getChartHeight(),
+                animations: {
+                    enabled: true,
+                    easing: 'easeinout',
+                    speed: 800
+                },
+                dropShadow: {
+                    enabled: true,
+                    color: '#000',
+                    top: 18,
+                    left: 7,
+                    blur: 10,
+                    opacity: 0.2
+                }
+            },
+            legend: {
+                position: 'bottom',
+                fontSize: '13px',
+                fontFamily: 'Inter, sans-serif',
+                markers: {
+                    width: 20,
+                    height: 14,
+                    strokeWidth: 0,
+                    strokeColor: '',
+                    fillColors: undefined,
+                    radius: 20,
+                    customHTML: undefined,
+                    onClick: undefined,
+                    offsetX: 0,
+                    offsetY: 0
+                }
+            },
+            tooltip: {
+                enabled: true,
+                theme: 'dark',
+                style: {
+                    fontSize: '14px',
+                    fontFamily: 'Inter, sans-serif'
+                }
+            },
+            plotOptions: {
+                pie: {
+                    donut: {
+                        size: '55%'
+                    }
+                }
+            },
+            dataLabels: {
+                enabled: true,
+                formatter: function (val) {
+                    return val.toFixed(1) + "%"
+                },
+                style: {
+                    fontSize: '12px',
+                    fontFamily: 'Inter, sans-serif',
+                    fontWeight: 'bold',
+                    colors: ['#fff']
+                },
+                dropShadow: {
+                    enabled: true
+                }
+            }
+        };
+
+        // Chart 1 - Sales Distribution (Dynamic Data)
+        const chart1Options = {
+            ...commonOptions,
+            series: [35, dashboardData.totalValue, dashboardData.paidTotalValue],
+            labels: ['Sales closed', 'UEOB', 'Collection'],
+            colors: ['#00B0F0', '#FFFF00', '#FF0000'],
+            tooltip: {
+                enabled: true,
+                theme: 'dark',
+                style: {
+                    fontSize: '14px',
+                    fontFamily: 'Inter, sans-serif'
+                },
+                y: {
+                    formatter: function (val, opts) {
+                        if (opts.seriesIndex === 1) {
+                            return 'UEOB: ₹' + dashboardData.totalValueFormatted;
+                        } else if (opts.seriesIndex === 2) {
+                            return 'Collection: ₹' + dashboardData.paidTotalValueFormatted;
+                        }
+                        return 'Sales closed: ' + val;
+                    }
+                }
+            }
+        };
+        const chart1 = new ApexCharts(document.querySelector("#apexChart1"), chart1Options);
+        chart1.render();
+
+        // Chart 2 - User Demographics
+        const chart2Options = {
+            ...commonOptions,
+            series: [30, 40, 20],
+            labels: ['Sold', 'Sales Gap', 'Further'],
+            colors: ['#00B0F0', '#FF0000', '#FFFF00']
+        };
+        const chart2 = new ApexCharts(document.querySelector("#apexChart2"), chart2Options);
+        chart2.render();
+
+        // Chart 3 - Leads chart (Bar Chart) - Dynamic Data with responsive height
+        function getBarChartHeight() {
+            const screenWidth = window.innerWidth;
+            if (screenWidth >= 1280 && screenWidth <= 1440) {
+                return 350; // Increased height for laptop screens
+            }
+            return 400; // Increased default height for other screens
+        }
+        
+        const chart3Options = {
+            chart: {
+                type: 'bar',
+                height: getBarChartHeight(),  // Responsive height
+                width: '100%',
+                animations: {
+                    enabled: true,
+                    easing: 'easeinout',
+                    speed: 800
+                },
+                dropShadow: {
+                    enabled: true,
+                    color: '#000',
+                    top: 18,
+                    left: 7,
+                    blur: 10,
+                    opacity: 0.2
+                },
+                toolbar: {
+                    show: false
+                }
+            },
+            series: [{
+                name: 'Inquiries',
+                data: {% if inquiry_chart_data.data %}{{ inquiry_chart_data.data|safe }}{% else %}[]{% endif %}
+            }],
+            xaxis: {
+                categories: {% if inquiry_chart_data.categories %}{{ inquiry_chart_data.categories|safe }}{% else %}[]{% endif %},
+                labels: {
+                    style: {
+                        fontSize: '11px',  // Slightly smaller font for better fit
+                        fontFamily: 'Inter, sans-serif',
+                        fontWeight: '500'
+                    },
+                    rotate: -45,  // Better rotation angle for readability
+                    rotateAlways: true,  // Always rotate labels
+                    maxHeight: 150,  // Increased max height for rotated labels
+                    trim: false,
+                    hideOverlappingLabels: false,  // Show all labels
+                    offsetY: 10  // Increased vertical offset for better spacing
+                },
+                axisBorder: {
+                    show: true,
+                    color: '#e0e0e0'
+                },
+                axisTicks: {
+                    show: true,
+                    color: '#e0e0e0'
+                },
+                tickAmount: undefined,  // Let ApexCharts determine optimal tick amount
+                tickPlacement: 'on'  // Place ticks on the axis
+            },
+            yaxis: {
+                labels: {
+                    style: {
+                        fontSize: '12px',  // Consistent font size
+                        fontFamily: 'Inter, sans-serif',
+                        fontWeight: '500'
+                    }
+                },
+                title: {
+                    text: 'Number of Inquiries',
+                    style: {
+                        fontSize: '13px',
+                        fontFamily: 'Inter, sans-serif',
+                        fontWeight: '600'
+                    }
+                }
+            },
+            colors: ['#2563EB'],
+            plotOptions: {
+                bar: {
+                    distributed: true,
+                    horizontal: false,
+                    columnWidth: '60%',  // Adjusted bar width
+                    borderRadius: 4,  // Slightly smaller border radius
+                    dataLabels: {
+                        position: 'top'  // Position data labels on top of bars
+                    }
+                }
+            },
+            dataLabels: {
+                enabled: true,
+                formatter: function (val) {
+                    return val > 0 ? val : '';  // Only show labels for non-zero values
+                },
+                style: {
+                    fontSize: '11px',  // Consistent font size
+                    fontFamily: 'Inter, sans-serif',
+                    fontWeight: 'bold',
+                    colors: ['#333']  // Dark color for better contrast
+                },
+                offsetY: -8  // Position labels above bars with more space
+            },
+            legend: {
+                show: false
+            },
+            tooltip: {
+                enabled: true,
+                theme: 'light',
+                style: {
+                    fontSize: '14px',
+                    fontFamily: 'Inter, sans-serif'
+                },
+                y: {
+                    formatter: function (val, opts) {
+                        const categoryName = opts.w.globals.categoryLabels[opts.dataPointIndex];
+                        return val + ' inquiries in ' + categoryName + ' status';
+                    }
+                }
+            },
+            grid: {
+                show: true,
+                borderColor: '#f0f0f0',
+                strokeDashArray: 3,
+                position: 'back',
+                xaxis: {
+                    lines: {
+                        show: false
+                    }
+                },
+                yaxis: {
+                    lines: {
+                        show: true
+                    }
+                },
+                padding: {
+                    left: 20,  // Increased left padding
+                    right: 20,  // Increased right padding
+                    top: 25,   // Increased top padding for data labels
+                    bottom: 80  // Significantly increased bottom padding for rotated labels
+                }
+            },
+            stroke: {
+                show: true,
+                width: 1,
+                colors: ['transparent']
+            }
+        };
+        const chart3 = new ApexCharts(document.querySelector("#apexChart3"), chart3Options);
+        chart3.render();
+    });
+</script>
+
+<style>
+/* Scoped CSS for Leads chart (apexChart3) full-width rendering */
+#apexChart3 {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+#apexChart3 .apexcharts-canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+#apexChart3 .apexcharts-inner {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* Ensure the chart wrapper for bar chart uses full width */
+.chart-container:has(#apexChart3) .chart-wrapper {
+    width: 100%;
+    padding: 0;
+    margin: 0;
+    height: 100%;
+}
+
+/* Enhanced styling for dynamic Leads chart with many categories */
+#apexChart3 .apexcharts-xaxis-texts-g text {
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    fill: #495057 !important;
+}
+
+#apexChart3 .apexcharts-yaxis-texts-g text {
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    fill: #495057 !important;
+}
+
+#apexChart3 .apexcharts-datalabel-label {
+    font-size: 12px !important;
+    font-weight: bold !important;
+    fill: #333 !important;
+}
+
+#apexChart3 .apexcharts-datalabels text {
+    font-size: 12px !important;
+    font-weight: bold !important;
+    fill: #333 !important;
+}
+
+/* Improve bar visibility and spacing */
+#apexChart3 .apexcharts-bar-area {
+    stroke-width: 0 !important;
+}
+
+#apexChart3 .apexcharts-series path {
+    stroke-width: 0 !important;
+}
+
+/* Grid line styling for better readability */
+#apexChart3 .apexcharts-gridlines-horizontal line {
+    stroke: #f0f0f0 !important;
+    stroke-dasharray: 3 !important;
+}
+
+#apexChart3 .apexcharts-gridlines-vertical line {
+    stroke: transparent !important;
+}
+
+/* Axis styling */
+#apexChart3 .apexcharts-xaxis-line {
+    stroke: #e0e0e0 !important;
+}
+
+#apexChart3 .apexcharts-yaxis-line {
+    stroke: #e0e0e0 !important;
+}
+
+/* Leads Chart - Enhanced spacing and readability */
+.dashboard-layout > .chart-container:nth-child(4) .chart-wrapper {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 420px !important;  /* Increased min-height for rotated labels */
+}
+
+.dashboard-layout > .chart-container:nth-child(4) #apexChart3 {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.dashboard-layout > .chart-container:nth-child(4) {
+    padding: 1.5rem !important;  /* Increased padding for better spacing */
+}
+
+/* Improve chart title styling */
+.dashboard-layout > .chart-container:nth-child(4) .chart-title {
+    font-size: 1.1rem !important;
+    font-weight: 600 !important;
+    color: #495057 !important;
+    margin-bottom: 1rem !important;
+}
+
+/* Enhanced X-axis label styling for better visibility */
+#apexChart3 .apexcharts-xaxis-texts-g text {
+    font-size: 11px !important;
+    font-weight: 500 !important;
+    fill: #495057 !important;
+    text-anchor: end !important;  /* Anchor text at the end for rotated labels */
+}
+
+/* Ensure X-axis labels have enough space */
+#apexChart3 .apexcharts-xaxis {
+    overflow: visible !important;
+}
+
+#apexChart3 .apexcharts-xaxis-texts-g {
+    overflow: visible !important;
+}
+
+/* Responsive adjustments for Leads chart */
+@media (max-width: 1200px) {
+    #apexChart3 .apexcharts-xaxis-texts-g text {
+        font-size: 10px !important;
+    }
+    
+    #apexChart3 .apexcharts-datalabel-label,
+    #apexChart3 .apexcharts-datalabels text {
+        font-size: 10px !important;
+    }
+    
+    .dashboard-layout > .chart-container:nth-child(4) .chart-wrapper {
+        min-height: 380px !important;
+    }
+}
+
+@media (max-width: 768px) {
+    #apexChart3 .apexcharts-xaxis-texts-g text {
+        font-size: 9px !important;
+    }
+    
+    #apexChart3 .apexcharts-datalabel-label,
+    #apexChart3 .apexcharts-datalabels text {
+        font-size: 9px !important;
+    }
+    
+    .dashboard-layout > .chart-container:nth-child(4) .chart-wrapper {
+        min-height: 350px !important;
+    }
+    
+    .dashboard-layout > .chart-container:nth-child(4) {
+        padding: 1rem !important;
+    }
+    
+    /* On mobile, Leads chart goes back to single column */
+    .dashboard-layout > .chart-container:nth-child(4) { 
+        grid-column: 1 !important;
+    }
+    .dashboard-layout > .card.stats-card.large-card { 
+        grid-column: 1 / 4 !important;
+        grid-row: 3 !important;
+    }
+}
+
+/* Value Cards Container - Two cards side by side */
+.value-cards-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    height: 100%;
+}
+
+.value-cards-container .small-card {
+    flex: 1;
+    min-height: 120px;
+    display: flex;
+    align-items: center;
+}
+
+.value-cards-container .small-card .card-body {
+    padding: 1rem 0.75rem;
+    height: 100%;
+}
+
+.value-cards-container .card-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.2rem;
+}
+
+.value-cards-container .card-icon i {
+    font-size: 1.1rem;
+}
+
+.value-cards-container .card-subtitle {
+    font-size: 0.7rem;
+    letter-spacing: 0.5px;
+}
+
+.value-cards-container .card-value {
+    font-size: 1.4rem;
+    color: #2c3e50;
+    line-height: 1.2;
+}
+
+/* Responsive adjustments for value cards */
+@media (max-width: 768px) {
+    .value-cards-container {
+        flex-direction: row;
+        gap: 0.5rem;
+    }
+    
+    .value-cards-container .card-value {
+        font-size: 1.2rem;
+    }
+    
+    .value-cards-container .card-subtitle {
+        font-size: 0.65rem;
+    }
+}
+</style>
+{% endblock %}

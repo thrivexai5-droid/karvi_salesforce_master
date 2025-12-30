@@ -1,0 +1,309 @@
+{% extends 'dashboard/base.html' %}
+
+{% block body_class %}scrollable-page{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Add Button - Icon and Text Alignment */
+.add-po-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    padding: 0.75rem 1.25rem !important;
+    font-weight: 600 !important;
+    border-radius: 0.5rem !important;
+    transition: all 0.2s ease !important;
+}
+
+.add-po-btn i {
+    font-size: 1rem !important;
+    line-height: 1 !important;
+    margin: 0 !important;
+}
+
+.add-po-btn span {
+    font-size: 0.875rem !important;
+    line-height: 1 !important;
+    margin: 0 !important;
+}
+
+.add-po-btn:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3) !important;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="user-management-container">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div>
+            <h2 class="page-title">Purchase Order Management</h2>
+            <p class="page-subtitle">Manage purchase orders and track delivery schedules</p>
+        </div>
+        <a href="{% url 'dashboard:purchase_order_create' %}" class="btn btn-primary add-po-btn">
+            <i class="bi bi-plus-circle"></i>
+            <span>Create New PO</span>
+        </a>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
+                <i class="bi bi-file-earmark-text"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ total_orders }}</h3>
+                <p>Total Orders</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                <i class="bi bi-currency-dollar"></i>
+            </div>
+            <div class="stat-content">
+                <h3>₹{{ total_value|floatformat:0 }}</h3>
+                <p>Total Value</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                <i class="bi bi-clock"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ due_today }}</h3>
+                <p>Due Today</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
+                <i class="bi bi-exclamation-triangle"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ overdue_orders }}</h3>
+                <p>Overdue</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Section -->
+    <div class="search-section">
+        <div class="d-flex gap-3 align-items-center">
+            <form method="GET" class="search-input-group flex-grow-1">
+                <i class="bi bi-search"></i>
+                <input type="text" name="search" class="form-control" placeholder="Search by PO number, company, customer, or staff..." value="{{ search_query }}">
+                <button type="submit" class="btn btn-outline-primary">Search</button>
+                {% if search_query %}
+                    <a href="{% url 'dashboard:purchase_order_management' %}" class="btn btn-outline-secondary">Clear</a>
+                {% endif %}
+            </form>
+            
+            <!-- Export to Excel Button -->
+            <div class="export-section">
+                <a href="{% url 'dashboard:export_purchase_orders_excel' %}{% if search_query %}?search={{ search_query }}{% endif %}" 
+                   class="btn btn-success" 
+                   title="Export to Excel">
+                    <i class="bi bi-file-earmark-excel me-2"></i>
+                    Download Excel
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Purchase Orders Table -->
+    <div class="table-container">
+        <div class="table-header">
+            <h5 class="mb-0">Purchase Orders</h5>
+            <span class="text-muted">{{ page_obj.paginator.count }} order{{ page_obj.paginator.count|pluralize }}</span>
+        </div>
+        
+        {% if page_obj %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>No</th>
+                            <th>PO Number</th>
+                            <th>Company</th>
+                            <th>Customer</th>
+                            <th>Order Date</th>
+                            <th>Value</th>
+                            <th>Delivery Date</th>
+                            <th>Status</th>
+                            <th>Sales Person</th>
+                            <th>Sales %</th>
+                            <th>Project Manager</th>
+                            <th>PM %</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in page_obj %}
+                            <tr>
+                                <td>
+                                    <div class="index-number">
+                                        <strong>{{ forloop.counter0|add:page_obj.start_index }}</strong>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="fw-semibold">{{ order.po_number }}</div>
+                                    <small class="text-muted">{{ order.days_to_mfg }} days MFG</small>
+                                </td>
+                                <td>
+                                    <div class="fw-semibold">{{ order.company.company }}</div>
+                                    <small class="text-muted">{{ order.company.get_plant_display }}</small>
+                                </td>
+                                <td>{{ order.customer_name }}</td>
+                                <td>{{ order.order_date|date:"M d, Y" }}</td>
+                                <td>
+                                    <div class="fw-semibold">₹{{ order.order_value|floatformat:0 }}</div>
+                                </td>
+                                <td>
+                                    <div>{{ order.delivery_date|date:"M d, Y" }}</div>
+                                    {% if order.due_days is not None %}
+                                        <small class="text-muted">
+                                            {{ order.get_due_days_display }}
+                                        </small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if order.due_days is not None %}
+                                        {% if order.due_days > 7 %}
+                                            <span class="badge" style="background-color: #22c55e; color: white;">{{ order.due_days }}</span>
+                                        {% elif order.due_days > 0 %}
+                                            <span class="badge" style="background-color: #f97316; color: white;">{{ order.due_days }}</span>
+                                        {% elif order.due_days == 0 %}
+                                            <span class="badge" style="background-color: #f59e0b; color: white;">0</span>
+                                        {% else %}
+                                            <span class="badge" style="background-color: #ef4444; color: white;">{{ order.due_days|stringformat:"d"|slice:"1:" }}</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="badge bg-secondary">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if order.sales_person %}
+                                        <div class="d-flex align-items-center">
+                                            <div class="user-avatar me-2">
+                                                <div class="index-number" style="width: 30px; height: 30px; font-size: 0.7rem;">
+                                                    {{ order.sales_person.first_name|first|upper|default:order.sales_person.username|first|upper }}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div class="fw-semibold" style="font-size: 0.85rem;">
+                                                    {{ order.sales_person.get_full_name|default:order.sales_person.username }}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {% else %}
+                                        <span class="text-muted">Not assigned</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if order.sales_percentage %}
+                                        <span class="badge bg-success">{{ order.sales_percentage }}%</span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if order.project_manager %}
+                                        <div class="d-flex align-items-center">
+                                            <div class="user-avatar me-2">
+                                                <div class="index-number" style="width: 30px; height: 30px; font-size: 0.7rem;">
+                                                    {{ order.project_manager.first_name|first|upper|default:order.project_manager.username|first|upper }}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div class="fw-semibold" style="font-size: 0.85rem;">
+                                                    {{ order.project_manager.get_full_name|default:order.project_manager.username }}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {% else %}
+                                        <span class="text-muted">Not assigned</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if order.project_manager_percentage %}
+                                        <span class="badge bg-info">{{ order.project_manager_percentage }}%</span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <a href="{% url 'dashboard:purchase_order_edit' order.id %}" class="btn btn-sm btn-outline-primary" title="Edit">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <a href="{% url 'dashboard:purchase_order_delete' order.id %}" class="btn btn-sm btn-outline-danger" title="Delete">
+                                            <i class="bi bi-trash"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if page_obj.has_other_pages %}
+                <div class="pagination-container">
+                    <nav aria-label="Purchase Order pagination">
+                        <ul class="pagination justify-content-center mb-0">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}">First</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">Previous</a>
+                                </li>
+                            {% endif %}
+
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ num }}</span>
+                                    </li>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}">{{ num }}</a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">Next</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}">Last</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+            {% endif %}
+        {% else %}
+            <div class="empty-state">
+                <i class="bi bi-file-earmark-text text-muted"></i>
+                <h4 class="text-muted">No purchase orders found</h4>
+                <p class="text-muted">
+                    {% if search_query %}
+                        No orders match your search criteria.
+                    {% else %}
+                        Start by creating your first purchase order.
+                    {% endif %}
+                </p>
+                <a href="{% url 'dashboard:purchase_order_create' %}" class="btn btn-primary add-po-btn">
+                    <i class="bi bi-plus-circle"></i>
+                    <span>Create New PO</span>
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,89 @@
+{% extends 'dashboard/base.html' %}
+
+{% block body_class %}scrollable-page{% endblock %}
+
+{% block content %}
+<div class="delete-confirmation-page">
+    <div class="delete-confirmation-container">
+        <!-- Header -->
+        <div class="delete-header">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard:contact_management' %}">Contacts & Company</a></li>
+                    <li class="breadcrumb-item active">Delete Company</li>
+                </ol>
+            </nav>
+        </div>
+
+        <!-- Delete Confirmation Card -->
+        <div class="delete-card">
+            <div class="delete-card-header">
+                <div class="delete-icon">
+                    <i class="fa-solid fa-building"></i>
+                </div>
+                <div class="delete-info">
+                    <div class="alert-badge">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <span>Delete Confirmation</span>
+                    </div>
+                    <h5>{{ company_obj.company_name }}</h5>
+                    <p class="text-muted">{{ company_obj.get_cities_display }}</p>
+                </div>
+            </div>
+            
+            <div class="delete-card-body">
+                <div class="warning-message">
+                    <i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>
+                    <strong>Are you sure you want to delete this company?</strong>
+                </div>
+                
+                <div class="delete-details">
+                    <h6>Company Details:</h6>
+                    <ul class="list-unstyled">
+                        <li><strong>Company Name:</strong> {{ company_obj.company_name }}</li>
+                        <li><strong>Primary City:</strong> {{ company_obj.city_1 }}</li>
+                        {% if company_obj.city_2 %}
+                        <li><strong>Secondary City:</strong> {{ company_obj.city_2 }}</li>
+                        {% endif %}
+                        <li><strong>Addresses:</strong> {{ company_obj.get_addresses_list|length }} address{{ company_obj.get_addresses_list|length|pluralize:"es" }}</li>
+                        <li><strong>Contacts:</strong> {{ company_obj.contact_set.count }} contact{{ company_obj.contact_set.count|pluralize }}</li>
+                        <li><strong>Created:</strong> {{ company_obj.created_at|date:"M d, Y" }}</li>
+                    </ul>
+                </div>
+
+                {% if company_obj.contact_set.count > 0 %}
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>Warning:</strong> This company has {{ company_obj.contact_set.count }} associated contact{{ company_obj.contact_set.count|pluralize }}. 
+                    Deleting this company will affect these contacts. Please reassign contacts to another company first.
+                </div>
+                {% endif %}
+                
+                <p class="text-muted">
+                    <i class="bi bi-info-circle me-1"></i>
+                    This action cannot be undone. All company data will be permanently removed.
+                </p>
+            </div>
+            
+            <div class="delete-card-actions">
+                {% if company_obj.contact_set.count == 0 %}
+                <form method="post" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash me-2"></i>Yes, Delete Company
+                    </button>
+                </form>
+                {% else %}
+                <button type="button" class="btn btn-danger" disabled>
+                    <i class="bi bi-trash me-2"></i>Cannot Delete (Has Contacts)
+                </button>
+                {% endif %}
+                <a href="{% url 'dashboard:contact_management' %}?view=companies" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left me-2"></i>Cancel
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

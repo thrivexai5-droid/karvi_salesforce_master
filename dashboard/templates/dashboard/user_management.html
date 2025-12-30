@@ -1,0 +1,287 @@
+{% extends 'dashboard/base.html' %}
+
+{% block body_class %}scrollable-page{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Add User Button - Icon and Text Alignment */
+.add-user-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    padding: 0.75rem 1.25rem !important;
+    font-weight: 600 !important;
+    border-radius: 0.5rem !important;
+    transition: all 0.2s ease !important;
+}
+
+.add-user-btn i {
+    font-size: 1rem !important;
+    line-height: 1 !important;
+    margin: 0 !important;
+}
+
+.add-user-btn span {
+    font-size: 0.875rem !important;
+    line-height: 1 !important;
+    margin: 0 !important;
+}
+
+.add-user-btn:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3) !important;
+}
+
+/* Header Actions Alignment */
+.header-actions {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.75rem !important;
+}
+
+/* Page Header Improvements */
+.page-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    margin-bottom: 2rem !important;
+    padding-bottom: 1rem !important;
+    border-bottom: 1px solid #e9ecef !important;
+}
+
+.header-content h2.page-title {
+    display: flex !important;
+    align-items: center !important;
+    margin: 0 !important;
+    font-size: 1.75rem !important;
+    font-weight: 700 !important;
+    color: #2c3e50 !important;
+}
+
+.header-content h2.page-title i {
+    font-size: 1.5rem !important;
+    color: #3b82f6 !important;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0">
+    <div class="user-management-container">
+        <!-- Header Section -->
+        <div class="page-header">
+            <div class="header-content">
+                <h2 class="page-title">
+                    <i class="bi bi-people-fill me-2"></i>
+                    User Management
+                </h2>
+            </div>
+            <div class="header-actions">
+                <a href="{% url 'dashboard:user_create' %}" class="btn btn-primary add-user-btn">
+                    <i class="bi bi-person-plus"></i>
+                    <span>Add User</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-icon bg-primary">
+                    <i class="bi bi-people"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ total_users }}</h3>
+                    <p>Total Users</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon bg-success">
+                    <i class="bi bi-person-check"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ active_users }}</h3>
+                    <p>Active Users</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon bg-info">
+                    <i class="bi bi-briefcase"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ sales_users }}</h3>
+                    <p>Sales Team</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon bg-warning">
+                    <i class="bi bi-diagram-3"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ pm_users }}</h3>
+                    <p>Project Managers</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Section -->
+        <div class="search-section">
+            <form method="GET" class="search-form">
+                <div class="search-input-group">
+                    <i class="bi bi-search"></i>
+                    <input type="text" name="search" value="{{ search_query }}" 
+                           placeholder="Search users by name, username, or email..." class="form-control">
+                    <button type="submit" class="btn btn-outline-primary">Search</button>
+                    {% if search_query %}
+                        <a href="{% url 'dashboard:user_management' %}" class="btn btn-outline-secondary">Clear</a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+
+        <!-- Users Table -->
+        <div class="table-container">
+            <div class="table-header">
+                <h5 class="mb-0">Users List</h5>
+                <span class="text-muted">{{ page_obj.paginator.count }} users found</span>
+            </div>
+            
+            {% if page_obj %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>No</th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Permissions</th>
+                                <th>Status</th>
+                                <th>Joined</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in page_obj %}
+                                <tr>
+                                    <td>
+                                        <div class="index-number">
+                                            <strong>{{ forloop.counter0|add:page_obj.start_index }}</strong>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="user-info">
+                                            <strong>{{ user.get_full_name|default:user.username }}</strong>
+                                            <div class="text-muted small">@{{ user.username }}</div>
+                                        </div>
+                                    </td>
+                                    <td>{{ user.email|default:"No email" }}</td>
+                                    <td>
+                                        {% if user.userprofile %}
+                                            <span class="text-muted">{{ user.userprofile.get_roles_display }}</span>
+                                        {% else %}
+                                            <span class="text-muted">No Role</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if user.userprofile %}
+                                            <div class="permissions-badges">
+                                                {% if user.userprofile.can_access_invoice_generation %}
+                                                    <span class="badge bg-success badge-sm me-1 mb-1">Invoice Generation</span>
+                                                {% endif %}
+                                                {% if user.userprofile.can_access_inquiry_handler %}
+                                                    <span class="badge bg-primary badge-sm me-1 mb-1">Inquiry Handler</span>
+                                                {% endif %}
+                                                {% if user.userprofile.can_access_quotation_generation %}
+                                                    <span class="badge bg-warning badge-sm me-1 mb-1">Quotation Generation</span>
+                                                {% endif %}
+                                                {% if user.userprofile.can_access_additional_supply %}
+                                                    <span class="badge bg-info badge-sm me-1 mb-1">Additional Supply</span>
+                                                {% endif %}
+                                                {% if not user.userprofile.can_access_invoice_generation and not user.userprofile.can_access_inquiry_handler and not user.userprofile.can_access_quotation_generation and not user.userprofile.can_access_additional_supply %}
+                                                    <span class="badge bg-secondary">No Access</span>
+                                                {% endif %}
+                                            </div>
+                                        {% else %}
+                                            <span class="badge bg-secondary">No Access</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if user.is_active %}
+                                            <span class="badge bg-success">Active</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">{{ user.date_joined|date:"M d, Y" }}</small>
+                                    </td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <a href="{% url 'dashboard:user_edit' user.id %}" 
+                                               class="btn btn-sm btn-outline-primary" title="Edit User">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            {% if user.id != request.user.id %}
+                                                <a href="{% url 'dashboard:user_delete' user.id %}" 
+                                                   class="btn btn-sm btn-outline-danger" title="Delete User">
+                                                    <i class="bi bi-trash"></i>
+                                                </a>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                {% if page_obj.has_other_pages %}
+                    <div class="pagination-container">
+                        <nav aria-label="Users pagination">
+                            <ul class="pagination justify-content-center">
+                                {% if page_obj.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}">First</a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">Previous</a>
+                                    </li>
+                                {% endif %}
+
+                                <li class="page-item active">
+                                    <span class="page-link">
+                                        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                                    </span>
+                                </li>
+
+                                {% if page_obj.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">Next</a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}">Last</a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    </div>
+                {% endif %}
+            {% else %}
+                <div class="empty-state">
+                    <i class="bi bi-people display-1 text-muted"></i>
+                    <h4>No Users Found</h4>
+                    <p class="text-muted">No users match your search criteria.</p>
+                    <a href="{% url 'dashboard:user_create' %}" class="btn btn-primary add-user-btn">
+                        <i class="bi bi-person-plus"></i>
+                        <span>Add First User</span>
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+
+{% endblock %}

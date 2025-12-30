@@ -1,0 +1,251 @@
+{% extends 'dashboard/base.html' %}
+
+{% block body_class %}scrollable-page{% endblock %}
+
+{% block content %}
+<div class="simple-form-page">
+    <div class="simple-form-wrapper">
+        <!-- Header -->
+        <div class="simple-header">
+            <h3>Delete All Additional Supplies</h3>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard:additional_supply_management' %}">Additional Supply</a></li>
+                    <li class="breadcrumb-item active">Delete All Items</li>
+                </ol>
+            </nav>
+        </div>
+
+        <!-- Delete Confirmation Container -->
+        <div class="simple-form-container">
+            <div class="delete-confirmation">
+                <div class="delete-icon">
+                    <i class="bi bi-exclamation-triangle"></i>
+                </div>
+                
+                <h4>Confirm Deletion</h4>
+                <p>Are you sure you want to delete ALL additional supply items for this invoice? This action cannot be undone.</p>
+                
+                <!-- Invoice Details -->
+                <div class="delete-details">
+                    <div class="detail-row">
+                        <span class="detail-label">Invoice Number:</span>
+                        <span class="detail-value">{{ invoice_obj.invoice_number }}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Company:</span>
+                        <span class="detail-value">{{ invoice_obj.company.company.company_name|default:"N/A" }}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Customer:</span>
+                        <span class="detail-value">{{ invoice_obj.customer_name }}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Items to Delete:</span>
+                        <span class="detail-value"><strong>{{ item_count }} item{{ item_count|pluralize }}</strong></span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Total Amount:</span>
+                        <span class="detail-value"><strong>₹{{ total_amount|floatformat:2 }}</strong></span>
+                    </div>
+                </div>
+                
+                <!-- Items List -->
+                <div class="items-list">
+                    <h5>Items to be deleted:</h5>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Description</th>
+                                    <th>Quantity</th>
+                                    <th>Unit Price</th>
+                                    <th>Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for supply in additional_supplies %}
+                                    <tr>
+                                        <td>{{ supply.description|truncatechars:40 }}</td>
+                                        <td>{{ supply.quantity }}</td>
+                                        <td>₹{{ supply.unit_price }}</td>
+                                        <td>₹{{ supply.total_amount }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Delete Actions -->
+                <form method="post" class="delete-form">
+                    {% csrf_token %}
+                    <div class="form-actions">
+                        <button type="submit" class="btn-danger">
+                            <i class="bi bi-trash me-2"></i>Yes, Delete All {{ item_count }} Item{{ item_count|pluralize }}
+                        </button>
+                        <a href="{% url 'dashboard:additional_supply_management' %}" class="btn-secondary">
+                            <i class="bi bi-x-circle me-2"></i>Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.delete-confirmation {
+    text-align: center;
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.delete-icon {
+    font-size: 4rem;
+    color: #dc3545;
+    margin-bottom: 1.5rem;
+}
+
+.delete-confirmation h4 {
+    color: #dc3545;
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+.delete-confirmation p {
+    color: #6c757d;
+    margin-bottom: 2rem;
+    font-size: 1.1rem;
+}
+
+.delete-details {
+    background: #f8f9fa;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    text-align: left;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.detail-row:last-child {
+    border-bottom: none;
+}
+
+.detail-label {
+    font-weight: 600;
+    color: #495057;
+    min-width: 140px;
+    flex-shrink: 0;
+}
+
+.detail-value {
+    color: #212529;
+    text-align: right;
+    word-break: break-word;
+}
+
+.items-list {
+    margin-bottom: 2rem;
+    text-align: left;
+}
+
+.items-list h5 {
+    color: #495057;
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+.items-list .table {
+    margin-bottom: 0;
+    font-size: 0.875rem;
+}
+
+.delete-form {
+    margin-top: 2rem;
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.btn-danger:hover {
+    background: linear-gradient(135deg, #c82333 0%, #bd2130 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.btn-secondary:hover {
+    background: #5a6268;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
+    color: white;
+    text-decoration: none;
+}
+
+@media (max-width: 768px) {
+    .delete-details {
+        padding: 1rem;
+    }
+    
+    .detail-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+    }
+    
+    .detail-value {
+        text-align: left;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .btn-danger,
+    .btn-secondary {
+        width: 100%;
+        justify-content: center;
+    }
+}
+</style>
+{% endblock %}

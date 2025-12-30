@@ -1,0 +1,277 @@
+{% extends 'dashboard/base.html' %}
+
+{% block body_class %}scrollable-page{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Add Additional Supply Button - Icon and Text Alignment */
+.add-supply-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    padding: 0.75rem 1.25rem !important;
+    font-weight: 600 !important;
+    border-radius: 0.5rem !important;
+    transition: all 0.2s ease !important;
+}
+
+.add-supply-btn i {
+    font-size: 1rem !important;
+    line-height: 1 !important;
+    margin: 0 !important;
+}
+
+.add-supply-btn span {
+    font-size: 0.875rem !important;
+    line-height: 1 !important;
+    margin: 0 !important;
+}
+
+.add-supply-btn:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3) !important;
+}
+
+/* Header Actions Alignment */
+.header-actions {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.75rem !important;
+}
+
+/* Page Header Improvements */
+.page-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    margin-bottom: 2rem !important;
+    padding-bottom: 1rem !important;
+    border-bottom: 1px solid #e9ecef !important;
+}
+
+.header-content h2.page-title {
+    display: flex !important;
+    align-items: center !important;
+    margin: 0 !important;
+    font-size: 1.75rem !important;
+    font-weight: 700 !important;
+    color: #2c3e50 !important;
+}
+
+.header-content h2.page-title i {
+    font-size: 1.5rem !important;
+    color: #3b82f6 !important;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0">
+    <div class="user-management-container">
+        <!-- Header Section -->
+        <div class="page-header">
+            <div class="header-content">
+                <h2 class="page-title">
+                    <i class="bi bi-plus-circle-fill me-2"></i>
+                    Additional Supply Management
+                </h2>
+                <p class="page-subtitle">Manage additional supplies for invoices</p>
+            </div>
+            <div class="header-actions">
+                <a href="{% url 'dashboard:additional_supply_create' %}" class="btn btn-primary add-supply-btn">
+                    <i class="bi bi-plus-circle"></i>
+                    <span>Create Additional Supply</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-icon bg-primary">
+                    <i class="bi bi-plus-circle"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ total_supplies }}</h3>
+                    <p>Total Additional Supplies</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon bg-success">
+                    <i class="bi bi-currency-rupee"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>₹{{ total_value|floatformat:2 }}</h3>
+                    <p>Total Value</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon bg-info">
+                    <i class="bi bi-receipt"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ unique_invoices }}</h3>
+                    <p>Unique Invoices</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Section -->
+        <div class="search-section">
+            <form method="get" class="search-form">
+                <div class="search-input-group">
+                    <input type="text" name="search" value="{{ search_query }}" placeholder="Search by invoice number, company, customer, description..." class="search-input">
+                    <button type="submit" class="search-btn">
+                        <i class="bi bi-search"></i>
+                    </button>
+                    {% if search_query %}
+                        <a href="{% url 'dashboard:additional_supply_management' %}" class="clear-search-btn" title="Clear search">
+                            <i class="bi bi-x"></i>
+                        </a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+
+        <!-- Additional Supplies Table -->
+        <div class="table-container">
+            {% if page_obj %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Invoice Number</th>
+                                <th>PO Number</th>
+                                <th>Company</th>
+                                <th>Customer</th>
+                                <th>Supply Date</th>
+                                <th>Items Count</th>
+                                <th>Total Amount</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for group in page_obj %}
+                                <tr>
+                                    <td>
+                                        <div class="cell-content">
+                                            <strong>{{ group.invoice__invoice_number }}</strong>
+                                            <small class="text-muted d-block">{{ group.invoice__invoice_date }}</small>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-content">
+                                            {{ group.invoice__purchase_order__po_number|default:"N/A" }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-content">
+                                            {{ group.invoice__company__company__company_name|default:"N/A" }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-content">
+                                            {{ group.invoice__customer_name }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-content">
+                                            {{ group.supply_date }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-content">
+                                            <span class="badge bg-primary">{{ group.item_count }} item{{ group.item_count|pluralize }}</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-content">
+                                            <strong>₹{{ group.total_amount|floatformat:2 }}</strong>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <a href="{% url 'dashboard:additional_supply_edit_by_invoice' group.invoice__id %}" class="btn btn-sm btn-outline-primary" title="Edit All Items for this Invoice">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <a href="{% url 'dashboard:additional_supply_delete_by_invoice' group.invoice__id %}" class="btn btn-sm btn-outline-danger" title="Delete All Items for this Invoice">
+                                                <i class="bi bi-trash"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="empty-state text-center py-5">
+                    <div class="empty-icon mb-3">
+                        <i class="bi bi-plus-circle" style="font-size: 4rem; color: #6c757d;"></i>
+                    </div>
+                    <h3 class="text-muted">No Additional Supplies Found</h3>
+                    <p class="text-muted">{% if search_query %}No additional supplies match your search criteria.{% else %}No additional supplies have been created yet.{% endif %}</p>
+                    {% if not search_query %}
+                        <a href="{% url 'dashboard:additional_supply_create' %}" class="btn btn-primary add-supply-btn">
+                            <i class="bi bi-plus-circle"></i>
+                            <span>Create First Additional Supply</span>
+                        </a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+            <div class="pagination-container">
+                <nav aria-label="Additional Supply pagination">
+                    <ul class="pagination justify-content-center mb-0">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}">
+                                    <i class="bi bi-chevron-double-left"></i>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                    <i class="bi bi-chevron-left"></i>
+                                </a>
+                            </li>
+                        {% endif %}
+
+                        {% for num in page_obj.paginator.page_range %}
+                            {% if page_obj.number == num %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ num }}</span>
+                                </li>
+                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}">{{ num }}</a>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                    <i class="bi bi-chevron-right"></i>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                    <i class="bi bi-chevron-double-right"></i>
+                                </a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                <div class="pagination-info text-center mt-2">
+                    <small class="text-muted">
+                        Showing {{ page_obj.start_index }} to {{ page_obj.end_index }} of {{ page_obj.paginator.count }} additional supplies
+                    </small>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

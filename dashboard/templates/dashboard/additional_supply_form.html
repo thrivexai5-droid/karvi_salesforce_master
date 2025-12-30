@@ -1,0 +1,565 @@
+{% extends 'dashboard/base.html' %}
+
+{% block body_class %}scrollable-page{% endblock %}
+
+{% block content %}
+<div class="simple-form-page">
+    <div class="simple-form-wrapper">
+        <!-- Header -->
+        <div class="simple-header">
+            <h3>{{ title }}</h3>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard:additional_supply_management' %}">Additional Supply</a></li>
+                    <li class="breadcrumb-item active">{{ action }} Additional Supply</li>
+                </ol>
+            </nav>
+        </div>
+
+        <!-- Form Container -->
+        <div class="simple-form-container">
+            {% if is_edit and supply_obj %}
+                <div class="edit-indicator">
+                    <div class="user-initial">
+                        {{ supply_obj.invoice.invoice_number|first|upper }}
+                    </div>
+                    <div>
+                        <strong>Editing Additional Supply for: {{ supply_obj.invoice.invoice_number }}</strong>
+                        <div class="text-muted">Company: {{ supply_obj.invoice.company.company }} | Amount: ₹{{ supply_obj.total_amount }}</div>
+                    </div>
+                </div>
+            {% endif %}
+
+            <form method="post" class="simple-form" id="additional-supply-form">
+                {% csrf_token %}
+                
+                <!-- Invoice Selection Row -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="{{ form.invoice_select.id_for_label }}">
+                            <i class="bi bi-receipt"></i> Invoice Number *
+                        </label>
+                        {{ form.invoice_select }}
+                        {% if form.invoice_select.errors %}
+                            <div class="error-msg">{{ form.invoice_select.errors.0 }}</div>
+                        {% endif %}
+                        <small class="form-text text-muted">Select invoice to auto-fetch details</small>
+                    </div>
+                </div>
+
+                <!-- Auto-fetched Details Row -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="po-number-display">
+                            <i class="bi bi-file-earmark-text"></i> PO Number (Auto-fetched)
+                        </label>
+                        <input type="text" id="po-number-display" class="form-control" readonly placeholder="Select invoice first">
+                        <small class="form-text text-muted">Auto-fetched from selected invoice</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="company-display">
+                            <i class="bi bi-building"></i> Company (Auto-fetched)
+                        </label>
+                        <input type="text" id="company-display" class="form-control" readonly placeholder="Select invoice first">
+                        <small class="form-text text-muted">Auto-fetched from selected invoice</small>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="customer-display">
+                            <i class="bi bi-person"></i> Customer (Auto-fetched)
+                        </label>
+                        <input type="text" id="customer-display" class="form-control" readonly placeholder="Select invoice first">
+                        <small class="form-text text-muted">Auto-fetched from selected invoice</small>
+                    </div>
+                </div>
+
+                <!-- Additional Supply Items Table -->
+                <div class="form-group">
+                    <div class="table-header">
+                        <label>
+                            <i class="bi bi-card-text"></i> Additional Supply Items *
+                        </label>
+                        <button type="button" id="add-item-btn" class="btn btn-sm btn-success">
+                            <i class="bi bi-plus-circle"></i> Add Item
+                        </button>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="items-table">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 40%;">Description *</th>
+                                    <th style="width: 15%;">Quantity *</th>
+                                    <th style="width: 20%;">Unit Price *</th>
+                                    <th style="width: 20%;">Total Amount</th>
+                                    <th style="width: 5%;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="items-tbody">
+                                <!-- Items will be added here dynamically -->
+                            </tbody>
+                            <tfoot>
+                                <tr class="table-info">
+                                    <td colspan="3" class="text-end"><strong>Grand Total:</strong></td>
+                                    <td><strong id="grand-total">₹0.00</strong></td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    <small class="form-text text-muted">Add multiple additional supply items. Click "+" to add more items.</small>
+                </div>
+
+                <!-- Remarks -->
+                <div class="form-group">
+                    <label for="{{ form.remarks.id_for_label }}">
+                        <i class="bi bi-chat-text"></i> Remarks
+                    </label>
+                    {{ form.remarks }}
+                    {% if form.remarks.errors %}
+                        <div class="error-msg">{{ form.remarks.errors.0 }}</div>
+                    {% endif %}
+                    <small class="form-text text-muted">Enter remarks (optional)</small>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">
+                        <i class="bi bi-check-circle me-2"></i>{{ action }} Additional Supply
+                    </button>
+                    <a href="{% url 'dashboard:additional_supply_management' %}" class="btn-secondary">
+                        <i class="bi bi-x-circle me-2"></i>Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const invoiceSelect = document.getElementById('{{ form.invoice_select.id_for_label }}');
+    const poNumberDisplay = document.getElementById('po-number-display');
+    const companyDisplay = document.getElementById('company-display');
+    const customerDisplay = document.getElementById('customer-display');
+    const addItemBtn = document.getElementById('add-item-btn');
+    const itemsTbody = document.getElementById('items-tbody');
+    const grandTotalElement = document.getElementById('grand-total');
+    
+    let itemCounter = 0;
+
+    // Auto-fetch invoice details when invoice is selected
+    invoiceSelect.addEventListener('change', function() {
+        const invoiceId = this.value;
+        if (invoiceId) {
+            fetch(`{% url 'dashboard:get_invoice_details_ajax' %}?invoice_id=${invoiceId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        poNumberDisplay.value = data.po_number;
+                        poNumberDisplay.style.backgroundColor = '#e3f2fd';
+                        
+                        companyDisplay.value = data.company;
+                        companyDisplay.style.backgroundColor = '#e8f5e8';
+                        
+                        customerDisplay.value = data.customer;
+                        customerDisplay.style.backgroundColor = '#e8f5e8';
+                    } else {
+                        poNumberDisplay.value = 'Error loading details';
+                        poNumberDisplay.style.backgroundColor = '#f8d7da';
+                        companyDisplay.value = 'Error loading details';
+                        companyDisplay.style.backgroundColor = '#f8d7da';
+                        customerDisplay.value = 'Error loading details';
+                        customerDisplay.style.backgroundColor = '#f8d7da';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    poNumberDisplay.value = 'Error loading details';
+                    poNumberDisplay.style.backgroundColor = '#f8d7da';
+                    companyDisplay.value = 'Error loading details';
+                    companyDisplay.style.backgroundColor = '#f8d7da';
+                    customerDisplay.value = 'Error loading details';
+                    customerDisplay.style.backgroundColor = '#f8d7da';
+                });
+        } else {
+            poNumberDisplay.value = '';
+            poNumberDisplay.style.backgroundColor = '';
+            companyDisplay.value = '';
+            companyDisplay.style.backgroundColor = '';
+            customerDisplay.value = '';
+            customerDisplay.style.backgroundColor = '';
+        }
+    });
+
+    // Add new item row
+    function addItemRow() {
+        itemCounter++;
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>
+                <textarea name="items[${itemCounter}][description]" class="form-control item-description" rows="2" placeholder="Enter description" required></textarea>
+            </td>
+            <td>
+                <input type="number" name="items[${itemCounter}][quantity]" class="form-control item-quantity" step="0.01" placeholder="0.00" required>
+            </td>
+            <td>
+                <input type="number" name="items[${itemCounter}][unit_price]" class="form-control item-unit-price" step="0.01" placeholder="0.00" required>
+            </td>
+            <td>
+                <input type="text" class="form-control item-total" readonly placeholder="₹0.00">
+            </td>
+            <td>
+                <button type="button" class="btn btn-sm btn-danger remove-item-btn" title="Remove Item">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </td>
+        `;
+        
+        itemsTbody.appendChild(row);
+        
+        // Add event listeners for calculation
+        const quantityInput = row.querySelector('.item-quantity');
+        const unitPriceInput = row.querySelector('.item-unit-price');
+        const totalInput = row.querySelector('.item-total');
+        const removeBtn = row.querySelector('.remove-item-btn');
+        
+        function calculateRowTotal() {
+            const quantity = parseFloat(quantityInput.value) || 0;
+            const unitPrice = parseFloat(unitPriceInput.value) || 0;
+            const total = quantity * unitPrice;
+            
+            totalInput.value = total > 0 ? `₹${total.toFixed(2)}` : '';
+            calculateGrandTotal();
+        }
+        
+        quantityInput.addEventListener('input', calculateRowTotal);
+        unitPriceInput.addEventListener('input', calculateRowTotal);
+        
+        removeBtn.addEventListener('click', function() {
+            row.remove();
+            calculateGrandTotal();
+        });
+    }
+
+    // Calculate grand total
+    function calculateGrandTotal() {
+        let grandTotal = 0;
+        const totalInputs = document.querySelectorAll('.item-total');
+        
+        totalInputs.forEach(input => {
+            const value = input.value.replace('₹', '').replace(',', '');
+            const amount = parseFloat(value) || 0;
+            grandTotal += amount;
+        });
+        
+        grandTotalElement.textContent = `₹${grandTotal.toFixed(2)}`;
+    }
+
+    // Add item button event listener
+    addItemBtn.addEventListener('click', addItemRow);
+
+    // Initialize if editing existing additional supply
+    {% if is_edit and existing_supplies %}
+        console.log('Edit mode detected');
+        console.log('Supply object:', '{{ supply_obj.invoice.invoice_number }}');
+        console.log('Existing supplies count:', {{ existing_supplies|length }});
+        
+        // Set the invoice dropdown to the correct value
+        invoiceSelect.value = '{{ supply_obj.invoice.id }}';
+        console.log('Set invoice dropdown to:', '{{ supply_obj.invoice.id }}');
+        
+        // Set auto-fetched fields first
+        poNumberDisplay.value = '{{ supply_obj.invoice.purchase_order.po_number|default:"" }}';
+        poNumberDisplay.style.backgroundColor = '#e3f2fd';
+        companyDisplay.value = '{{ supply_obj.invoice.company.company.company_name|default:"N/A" }}';
+        companyDisplay.style.backgroundColor = '#e8f5e8';
+        customerDisplay.value = '{{ supply_obj.invoice.customer_name|default:"N/A" }}';
+        customerDisplay.style.backgroundColor = '#e8f5e8';
+        
+        console.log('Set auto-fetched fields');
+        
+        // Clear the table first
+        itemsTbody.innerHTML = '';
+        console.log('Cleared table');
+        
+        // Populate with existing data
+        {% for supply in existing_supplies %}
+            console.log('Adding item {{ forloop.counter }}: {{ supply.description|truncatechars:20 }}');
+            addItemRow();
+            const row{{ forloop.counter }} = itemsTbody.lastElementChild;
+            row{{ forloop.counter }}.querySelector('.item-description').value = `{{ supply.description|escapejs }}`;
+            row{{ forloop.counter }}.querySelector('.item-quantity').value = `{{ supply.quantity }}`;
+            row{{ forloop.counter }}.querySelector('.item-unit-price').value = `{{ supply.unit_price }}`;
+            
+            // Trigger calculation for this row
+            const quantityInput{{ forloop.counter }} = row{{ forloop.counter }}.querySelector('.item-quantity');
+            const unitPriceInput{{ forloop.counter }} = row{{ forloop.counter }}.querySelector('.item-unit-price');
+            const totalInput{{ forloop.counter }} = row{{ forloop.counter }}.querySelector('.item-total');
+            
+            const quantity{{ forloop.counter }} = parseFloat(quantityInput{{ forloop.counter }}.value) || 0;
+            const unitPrice{{ forloop.counter }} = parseFloat(unitPriceInput{{ forloop.counter }}.value) || 0;
+            const total{{ forloop.counter }} = quantity{{ forloop.counter }} * unitPrice{{ forloop.counter }};
+            totalInput{{ forloop.counter }}.value = total{{ forloop.counter }} > 0 ? `₹${total{{ forloop.counter }}.toFixed(2)}` : '';
+        {% endfor %}
+        
+        // Calculate grand total
+        calculateGrandTotal();
+        
+        console.log('Edit mode initialized with {{ existing_supplies|length }} items');
+    {% else %}
+        // Add first row by default for new forms
+        addItemRow();
+        console.log('Create mode initialized');
+    {% endif %}
+
+    // Form submission handling
+    document.getElementById('additional-supply-form').addEventListener('submit', function(e) {
+        const rows = itemsTbody.querySelectorAll('tr');
+        if (rows.length === 0) {
+            e.preventDefault();
+            alert('Please add at least one additional supply item.');
+            return false;
+        }
+        
+        // Validate that all rows have required fields
+        let isValid = true;
+        rows.forEach(row => {
+            const description = row.querySelector('.item-description').value.trim();
+            const quantity = row.querySelector('.item-quantity').value;
+            const unitPrice = row.querySelector('.item-unit-price').value;
+            
+            if (!description || !quantity || !unitPrice) {
+                isValid = false;
+            }
+        });
+        
+        if (!isValid) {
+            e.preventDefault();
+            alert('Please fill in all required fields for each item (Description, Quantity, Unit Price).');
+            return false;
+        }
+    });
+});
+</script>
+
+<style>
+/* Additional Supply Form Specific Styles */
+.simple-form-page .form-group input[readonly] {
+    background-color: #f8f9fa;
+    border-color: #dee2e6;
+    color: #6c757d;
+}
+
+.simple-form-page .form-group input[readonly]:focus {
+    box-shadow: none;
+    border-color: #dee2e6;
+}
+
+.edit-indicator {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    border-left-color: #2196f3;
+}
+
+.user-initial {
+    background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
+}
+
+/* Status color indicators */
+.form-control[style*="background-color: #e8f5e8"] {
+    border-color: #28a745 !important;
+}
+
+.form-control[style*="background-color: #f8d7da"] {
+    border-color: #dc3545 !important;
+}
+
+.form-control[style*="background-color: #e3f2fd"] {
+    border-color: #007bff !important;
+}
+
+.form-text {
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+/* Compact form styling */
+.simple-form .form-row {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.simple-form .form-row .form-group {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+.simple-form .form-group {
+    margin-bottom: 1rem;
+}
+
+.simple-form .form-group label {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.simple-form .form-group label i {
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+.simple-form .form-control,
+.simple-form .form-select {
+    border-radius: 0.375rem;
+    border: 1px solid #ced4da;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+}
+
+.simple-form .form-control:focus,
+.simple-form .form-select:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.simple-form textarea.form-control {
+    resize: vertical;
+    min-height: 80px;
+}
+
+/* Table Header Styling */
+.table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.table-header label {
+    margin-bottom: 0;
+    font-weight: 600;
+    color: #495057;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.table-header label i {
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+/* Items Table Styling */
+#items-table {
+    margin-bottom: 0;
+}
+
+#items-table th {
+    background-color: #f8f9fa;
+    border-color: #dee2e6;
+    font-weight: 600;
+    font-size: 0.875rem;
+    padding: 0.75rem 0.5rem;
+}
+
+#items-table td {
+    padding: 0.5rem;
+    vertical-align: middle;
+}
+
+#items-table .form-control {
+    border: 1px solid #ced4da;
+    font-size: 0.875rem;
+    padding: 0.375rem 0.5rem;
+}
+
+#items-table .item-description {
+    resize: vertical;
+    min-height: 60px;
+}
+
+#items-table .item-total {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+
+#items-table tfoot td {
+    background-color: #e3f2fd;
+    font-weight: 600;
+    border-color: #dee2e6;
+}
+
+#grand-total {
+    color: #0d6efd;
+    font-size: 1.1rem;
+}
+
+/* Button Styling */
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+.remove-item-btn {
+    border: none;
+    background: #dc3545;
+    color: white;
+    border-radius: 0.25rem;
+    transition: all 0.2s ease;
+}
+
+.remove-item-btn:hover {
+    background: #c82333;
+    transform: scale(1.05);
+}
+
+#add-item-btn {
+    border: none;
+    background: #28a745;
+    color: white;
+    border-radius: 0.375rem;
+    padding: 0.5rem 1rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+#add-item-btn:hover {
+    background: #218838;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(40, 167, 69, 0.3);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .simple-form .form-row {
+        flex-direction: column;
+        gap: 0;
+    }
+    
+    .simple-form .form-row .form-group {
+        margin-bottom: 1rem;
+    }
+    
+    .table-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    #items-table th,
+    #items-table td {
+        padding: 0.375rem 0.25rem;
+        font-size: 0.8rem;
+    }
+}
+</style>
+{% endblock %}

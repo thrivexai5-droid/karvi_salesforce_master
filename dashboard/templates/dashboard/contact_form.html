@@ -1,0 +1,218 @@
+{% extends 'dashboard/base.html' %}
+
+{% block body_class %}scrollable-page{% endblock %}
+
+{% block content %}
+<div class="simple-form-page">
+    <div class="simple-form-wrapper">
+        <!-- Header -->
+        <div class="simple-header">
+            <h3>{{ title }}</h3>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard:contact_management' %}">Contacts & Company</a></li>
+                    <li class="breadcrumb-item active">{{ action }} Contact</li>
+                </ol>
+            </nav>
+        </div>
+
+        <!-- Form Container -->
+        <div class="simple-form-container">
+            {% if is_edit and contact_obj %}
+                <div class="edit-indicator">
+                    <div class="user-initial">
+                        {{ contact_obj.contact_name|first|upper }}
+                    </div>
+                    <div>
+                        <strong>Editing Contact: {{ contact_obj.contact_name }}</strong>
+                        <div class="text-muted">Company: {{ contact_obj.company.company_name }} | Location: {{ contact_obj.location_city }}</div>
+                    </div>
+                </div>
+            {% endif %}
+
+            <form method="post" class="simple-form compact-form" id="contact-form">
+                {% csrf_token %}
+                
+                <!-- Client Name -->
+                <div class="form-group compact">
+                    <label for="{{ form.contact_name.id_for_label }}">
+                        <i class="bi bi-person-fill"></i> Client Name
+                    </label>
+                    {{ form.contact_name }}
+                    {% if form.contact_name.errors %}
+                        <div class="error-msg">{{ form.contact_name.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Email Address -->
+                <div class="form-group compact">
+                    <label for="{{ form.email_1.id_for_label }}">
+                        <i class="bi bi-envelope-fill"></i> Email Address
+                    </label>
+                    {{ form.email_1 }}
+                    {% if form.email_1.errors %}
+                        <div class="error-msg">{{ form.email_1.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Phone Number -->
+                <div class="form-group compact">
+                    <label for="{{ form.phone_1.id_for_label }}">
+                        <i class="bi bi-telephone-fill"></i> Phone Number
+                    </label>
+                    {{ form.phone_1 }}
+                    {% if form.phone_1.errors %}
+                        <div class="error-msg">{{ form.phone_1.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Secondary Phone Number -->
+                <div class="form-group compact">
+                    <label for="{{ form.phone_2.id_for_label }}">
+                        <i class="bi bi-telephone"></i> Secondary Phone Number
+                    </label>
+                    {{ form.phone_2 }}
+                    {% if form.phone_2.errors %}
+                        <div class="error-msg">{{ form.phone_2.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Company Name -->
+                <div class="form-group compact">
+                    <label for="{{ form.company.id_for_label }}">
+                        <i class="bi bi-building-fill"></i> Company Name
+                    </label>
+                    {{ form.company }}
+                    {% if form.company.errors %}
+                        <div class="error-msg">{{ form.company.errors.0 }}</div>
+                    {% endif %}
+                </div>
+                
+                <!-- Location (City) -->
+                <div class="form-group compact">
+                    <label for="location-display">
+                        <i class="bi bi-geo-alt-fill"></i> Location (City)
+                    </label>
+                    <input type="text" id="location-display" class="form-control" readonly placeholder="Auto-fetched from company">
+                </div>
+
+                <!-- Personal Address -->
+                <div class="form-group compact">
+                    <label for="{{ form.individual_address.id_for_label }}">
+                        <i class="bi bi-house-fill"></i> Personal Address
+                    </label>
+                    {{ form.individual_address }}
+                    {% if form.individual_address.errors %}
+                        <div class="error-msg">{{ form.individual_address.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Form Actions -->
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">
+                        <i class="bi bi-check-circle me-2"></i>{{ action }} Contact
+                    </button>
+                    <a href="{% url 'dashboard:contact_management' %}" class="btn-secondary">
+                        <i class="bi bi-x-circle me-2"></i>Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const companySelect = document.getElementById('{{ form.company.id_for_label }}');
+    const locationDisplay = document.getElementById('location-display');
+
+    // Auto-fill location when company is selected
+    companySelect.addEventListener('change', function() {
+        const companyId = this.value;
+        if (companyId) {
+            // Show loading state
+            locationDisplay.value = 'Loading...';
+            locationDisplay.className = 'form-control loading';
+
+            fetch(`{% url 'dashboard:get_company_data_ajax' %}?company_id=${companyId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        locationDisplay.value = data.location_city;
+                        locationDisplay.className = 'form-control auto-filled';
+                    } else {
+                        locationDisplay.value = 'Error loading location';
+                        locationDisplay.className = 'form-control error-state';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    locationDisplay.value = 'Error loading location';
+                    locationDisplay.className = 'form-control error-state';
+                });
+        } else {
+            locationDisplay.value = '';
+            locationDisplay.className = 'form-control';
+        }
+    });
+
+    // Initialize if editing existing contact
+    {% if is_edit and contact_obj %}
+        locationDisplay.value = '{{ contact_obj.location_city }}';
+        locationDisplay.className = 'form-control auto-filled';
+    {% endif %}
+
+    // Trigger initial calculation if form has values
+    if (companySelect.value) {
+        companySelect.dispatchEvent(new Event('change'));
+    }
+});
+</script>
+
+<style>
+/* Contact Form Specific Styles */
+.simple-form-page .form-group textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+.edit-indicator {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    border-left-color: #2196f3;
+}
+
+.user-initial {
+    background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
+}
+
+.form-control.auto-filled {
+    background-color: #e8f5e8;
+    border-color: #28a745;
+}
+
+.form-control.loading {
+    background-color: #fff3cd;
+    border-color: #ffc107;
+}
+
+.form-control.error-state {
+    background-color: #f8d7da;
+    border-color: #dc3545;
+}
+
+/* Compact form styling */
+.compact-form .form-group.compact {
+    margin-bottom: 1rem;
+}
+
+.compact-form .form-group.compact label {
+    margin-bottom: 0.25rem;
+}
+
+.compact-form .form-group.compact .form-control,
+.compact-form .form-group.compact .form-select {
+    margin-bottom: 0;
+}
+</style>
+{% endblock %}

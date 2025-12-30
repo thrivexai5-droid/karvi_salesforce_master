@@ -1,0 +1,511 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}Quotation Generator - Dashboard{% endblock %}
+
+{% block body_class %}scrollable-page{% endblock %}
+
+{% block content %}
+<div class="simple-form-page">
+    <div class="simple-form-wrapper">
+        <!-- Header -->
+        <div class="simple-header">
+            <h3>Generate Quotation</h3>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard:quotation_management' %}">Quotations</a></li>
+                    <li class="breadcrumb-item active">Generate Quotation</li>
+                </ol>
+            </nav>
+        </div>
+
+        <!-- Form Container -->
+        <div class="simple-form-container">
+            {% if draft_data %}
+                {% if draft_data.is_draft %}
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Draft Loaded:</strong> You have a saved draft for quote "{{ draft_data.quote_no }}". Continue editing or generate the final quotation.
+                    </div>
+                {% else %}
+                    <div class="alert alert-success">
+                        <i class="bi bi-check-circle"></i>
+                        <strong>Generated Quotation Loaded:</strong> This quotation "{{ draft_data.quote_no }}" has already been generated. You can view the data but cannot save as draft.
+                    </div>
+                {% endif %}
+            {% endif %}
+            
+            {% if error %}
+            <div class="alert alert-danger">
+                <strong>Error:</strong> {{ error }}
+            </div>
+            {% endif %}
+            <form method="POST" action="{% url 'dashboard:generate_quotation' %}" class="simple-form" enctype="multipart/form-data">
+                {% csrf_token %}
+                
+                <!-- Quote Details Section -->
+                <div class="form-row three-column-row">
+                    <div class="form-group">
+                        <label for="quote_no">
+                            <i class="bi bi-hash"></i> Quote Number
+                        </label>
+                        <input type="text" id="quote_no" name="quote_no" class="form-control" value="KEC005JN2025" required>
+                        <small class="form-text"><i class="bi bi-info-circle"></i> Unique quotation identifier</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="revision">
+                            <i class="bi bi-arrow-repeat"></i> Revision
+                        </label>
+                        <input type="text" id="revision" name="revision" class="form-control readonly-field" value="{{ draft_data.revision|default:'Rev A' }}" readonly>
+                        <small class="form-text"><i class="bi bi-lock"></i> Revision is automatically managed (Rev A → Rev B → Rev C)</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="date">
+                            <i class="bi bi-calendar"></i> Date
+                        </label>
+                        <input type="text" id="date" name="date" class="form-control" value="Wednesday, September 24, 2025" placeholder="Wednesday, September 24, 2025">
+                        <small class="form-text"><i class="bi bi-calendar-event"></i> Quotation date</small>
+                    </div>
+                </div>
+
+                <!-- Customer Details Section -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="to_person">
+                            <i class="bi bi-person"></i> To (Person)
+                        </label>
+                        <input type="text" id="to_person" name="to_person" class="form-control" value="Mr. Mohak Dholakia" placeholder="Mr. Mohak Dholakia">
+                        <small class="form-text"><i class="bi bi-person-badge"></i> Contact person name</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="firm">
+                            <i class="bi bi-building"></i> Firm/Company
+                        </label>
+                        <input type="text" id="firm" name="firm" class="form-control" value="Schneider Electric India Private Limited" placeholder="Schneider Electric India Private Limited">
+                        <small class="form-text"><i class="bi bi-building-fill"></i> Company name</small>
+                    </div>
+                </div>
+
+                <!-- Address Section -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="address">
+                            <i class="bi bi-geo-alt"></i> Address
+                        </label>
+                        <textarea id="address" name="address" class="form-control" rows="3" placeholder="Full address">Electrical & Automation (E&A), Village Ankhol, Behind L&T Knowledge City, N. H. 8, Between Ajwa-Waghodia Junction, Vadodara –390019. India</textarea>
+                        <small class="form-text"><i class="bi bi-geo-alt-fill"></i> Complete company address</small>
+                    </div>
+                </div>
+
+                <!-- Terms Section -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="payment_terms">
+                            <i class="bi bi-credit-card"></i> Payment Terms
+                        </label>
+                        <textarea id="payment_terms" name="payment_terms" class="form-control" rows="2">Payment: 45 Days from delivery (Being an MSME)</textarea>
+                        <small class="form-text"><i class="bi bi-credit-card-fill"></i> Payment conditions</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="delivery_terms">
+                            <i class="bi bi-truck"></i> Delivery Terms
+                        </label>
+                        <textarea id="delivery_terms" name="delivery_terms" class="form-control" rows="2">Delivery: 2-3 weeks per fixture from Purchase Order (Gov. force majeure conditions apply at time of delivery)</textarea>
+                        <small class="form-text"><i class="bi bi-truck-flatbed"></i> Delivery conditions</small>
+                    </div>
+                </div>
+
+                <!-- Products Section -->
+                <div class="items-section">
+                    <div class="section-header">
+                        <h5><i class="bi bi-boxes"></i> Products</h5>
+                        <button type="button" class="btn btn-sm btn-success" onclick="addFixture()">
+                            <i class="bi bi-plus-circle me-1"></i>Add Product
+                        </button>
+                    </div>
+                    
+                    <div class="items-table-container" id="fixtures-container">
+                        <!-- Fixtures will be added here dynamically -->
+                    </div>
+                </div>
+
+                <!-- Submit Section -->
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary btn-lg" onclick="return validateForGeneration()">
+                        <i class="bi bi-download me-2"></i>Generate & Download Quotation
+                    </button>
+                    {% if not draft_data or draft_data.is_draft %}
+                        <button type="submit" formaction="{% url 'dashboard:save_quotation_draft' %}" class="btn btn-outline-secondary btn-lg">
+                            <i class="bi bi-save me-2"></i>Save as Draft
+                        </button>
+                    {% endif %}
+                    <a href="{% url 'dashboard:quotation_management' %}" class="btn btn-outline-secondary btn-lg">
+                        <i class="bi bi-arrow-left me-2"></i>Back to Management
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="alert alert-info mt-3">
+        <i class="bi bi-info-circle"></i>
+        <strong>Note:</strong> This tool uses the template "Quote KEC005JN2025 RevA - new format full.docx" and preserves all formatting while replacing the specified fields. The quotation will be downloaded immediately after generation.
+    </div>
+</div>
+
+<script>
+let fixtureCount = 0;
+
+function createFixtureHTML(index) {
+    const defaults = [
+        {
+            name: 'Fixture 1',
+            desc: 'Holding minitop connector',
+            hsn: '84790000',
+            qty: '1',
+            unit: 'Set',
+            price: '26,879/-',
+            total: '26,879/-',
+            words: 'Twenty-Six Thousand Eight Hundred Seventy-Nine INR Only PER EACH',
+            specifications: 'Technical specifications for Fixture 1:\n• Material: High-grade steel\n• Dimensions: As per drawing\n• Finish: Powder coated\n• Compliance: ISO standards'
+        },
+        {
+            name: 'Fixture 2',
+            desc: 'pulling minitop PCBA',
+            hsn: '84790000',
+            qty: '1',
+            unit: 'Set',
+            price: '29,546/-',
+            total: '29,546/-',
+            words: 'Twenty-Nine Thousand Five Hundred Forty-Six INR Only PER EACH',
+            specifications: 'Technical specifications for Fixture 2:\n• Material: Aluminum alloy\n• Dimensions: As per drawing\n• Finish: Anodized\n• Compliance: ISO standards'
+        }
+    ];
+
+    const defaultData = defaults[index] || {
+        name: `Fixture ${index + 1}`,
+        desc: '',
+        hsn: '84790000',
+        qty: '1',
+        unit: 'Set',
+        price: '',
+        total: '',
+        words: '',
+        specifications: ''
+    };
+
+    return `
+        <div class="fixture-card" data-fixture-index="${index}">
+            <div class="fixture-header">
+                <h6><i class="bi bi-box"></i> Product ${index + 1}</h6>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeFixture(${index})">
+                    <i class="bi bi-trash"></i> Remove
+                </button>
+            </div>
+            
+            <div class="fixture-content">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Product Name</label>
+                        <input type="text" class="form-control" name="fixtures[${index}][name]" value="${defaultData.name}">
+                        <small class="form-text text-muted">Required for final quotation</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <input type="text" class="form-control" name="fixtures[${index}][desc]" value="${defaultData.desc}">
+                        <small class="form-text text-muted">Required for final quotation</small>
+                    </div>
+                </div>
+                
+                <div class="form-row three-column-row">
+                    <div class="form-group">
+                        <label>HSN Code</label>
+                        <input type="text" class="form-control" name="fixtures[${index}][hsn]" value="${defaultData.hsn}">
+                    </div>
+                    <div class="form-group">
+                        <label>Quantity</label>
+                        <input type="number" class="form-control" name="fixtures[${index}][qty]" value="${defaultData.qty}">
+                    </div>
+                    <div class="form-group">
+                        <label>Unit</label>
+                        <input type="text" class="form-control" name="fixtures[${index}][unit]" value="${defaultData.unit}">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Unit Price</label>
+                        <input type="text" class="form-control" name="fixtures[${index}][price]" value="${defaultData.price}">
+                    </div>
+                    <div class="form-group">
+                        <label>Total Price</label>
+                        <input type="text" class="form-control" name="fixtures[${index}][total]" value="${defaultData.total}">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Price in Words</label>
+                        <input type="text" class="form-control" name="fixtures[${index}][words]" value="${defaultData.words}">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label><i class="bi bi-file-text"></i> Specifications</label>
+                        <textarea class="form-control" name="fixtures[${index}][specifications]" rows="4" placeholder="Enter detailed product specifications...">${defaultData.specifications || ''}</textarea>
+                        <small class="form-text text-muted">Optional: Detailed technical specifications for this product</small>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label><i class="bi bi-image"></i> Product Image </label>
+                        <input type="file" class="form-control" name="fixtures[${index}][image]" accept="image/*" onchange="handleImageUpload(this, ${index})">
+                        <small class="form-text text-muted">Optional: Upload a product image (Any format - Max 10MB for drafts)</small>
+                        <div id="image-preview-${index}" class="mt-2" style="display: none;">
+                            <small id="image-info-${index}"></small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function addFixture() {
+    const container = document.getElementById('fixtures-container');
+    const fixtureHTML = createFixtureHTML(fixtureCount);
+    container.insertAdjacentHTML('beforeend', fixtureHTML);
+    fixtureCount++;
+}
+
+function removeFixture(index) {
+    const fixture = document.querySelector(`[data-fixture-index="${index}"]`);
+    if (fixture) {
+        fixture.remove();
+    }
+}
+
+function handleImageUpload(input, index) {
+    const previewDiv = document.getElementById(`image-preview-${index}`);
+    const infoSpan = document.getElementById(`image-info-${index}`);
+    
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
+        
+        // Soft validation - warn but don't block
+        if (file.size > 5 * 1024 * 1024) {
+            // Show warning but allow upload for draft
+            infoSpan.innerHTML = `<span class="text-warning">${file.name} (${fileSizeMB}MB) - Large file, may cause issues</span>`;
+            previewDiv.style.display = 'block';
+            previewDiv.className = 'mt-2 alert alert-warning';
+            return;
+        }
+        
+        // Soft file type validation - warn but don't block
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/bmp'];
+        if (!allowedTypes.includes(file.type)) {
+            // Show warning but allow upload for draft
+            infoSpan.innerHTML = `<span class="text-warning">${file.name} - Unsupported format, may not work in final quotation</span>`;
+            previewDiv.style.display = 'block';
+            previewDiv.className = 'mt-2 alert alert-warning';
+            return;
+        }
+        
+        // Show success feedback
+        infoSpan.innerHTML = `<span class="text-success">${file.name} (${fileSizeMB}MB) - Ready for upload</span>`;
+        previewDiv.style.display = 'block';
+        previewDiv.className = 'mt-2 alert alert-success';
+    } else {
+        // No file selected - this is OK for optional field
+        if (previewDiv) {
+            previewDiv.style.display = 'none';
+        }
+    }
+}
+
+// Initialize with 2 fixtures on page load
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('=== QUOTATION FORM DEBUG ===');
+    
+    // Load draft data if available
+    {% if draft_data_json %}
+        console.log('Draft data JSON found, loading...');
+        try {
+            const draftData = {{ draft_data_json|safe }};
+            console.log('Draft data loaded:', draftData);
+            loadDraftData(draftData);
+        } catch (error) {
+            console.error('Error loading draft data:', error);
+            addFixture();
+            addFixture();
+        }
+    {% else %}
+        console.log('No draft data, adding default fixtures');
+        addFixture();
+        addFixture();
+    {% endif %}
+});
+
+function loadDraftData(draftData) {
+    console.log('=== LOADING DRAFT DATA ===');
+    console.log('Draft data received:', draftData);
+    
+    // Fill basic form fields
+    if (draftData.quote_no) document.getElementById('quote_no').value = draftData.quote_no;
+    if (draftData.revision) {
+        const revisionField = document.getElementById('revision');
+        revisionField.value = draftData.revision;
+        
+        // Revision field is always readonly - apply styling
+        revisionField.style.backgroundColor = '#f8f9fa';
+        revisionField.style.cursor = 'not-allowed';
+        revisionField.style.color = '#6c757d';
+    }
+    if (draftData.date) document.getElementById('date').value = draftData.date;
+    if (draftData.to_person) document.getElementById('to_person').value = draftData.to_person;
+    if (draftData.firm) document.getElementById('firm').value = draftData.firm;
+    if (draftData.address) document.getElementById('address').value = draftData.address;
+    if (draftData.payment_terms) document.getElementById('payment_terms').value = draftData.payment_terms;
+    if (draftData.delivery_terms) document.getElementById('delivery_terms').value = draftData.delivery_terms;
+    
+    // Load fixtures
+    if (draftData.fixtures && draftData.fixtures.length > 0) {
+        draftData.fixtures.forEach((fixture, index) => {
+            addFixture();
+            const fixtureCard = document.querySelector(`[data-fixture-index="${index}"]`);
+            if (fixtureCard) {
+                if (fixture.name) fixtureCard.querySelector(`input[name="fixtures[${index}][name]"]`).value = fixture.name;
+                if (fixture.desc) fixtureCard.querySelector(`input[name="fixtures[${index}][desc]"]`).value = fixture.desc;
+                if (fixture.hsn) fixtureCard.querySelector(`input[name="fixtures[${index}][hsn]"]`).value = fixture.hsn;
+                if (fixture.qty) fixtureCard.querySelector(`input[name="fixtures[${index}][qty]"]`).value = fixture.qty;
+                if (fixture.unit) fixtureCard.querySelector(`input[name="fixtures[${index}][unit]"]`).value = fixture.unit;
+                if (fixture.price) fixtureCard.querySelector(`input[name="fixtures[${index}][price]"]`).value = fixture.price;
+                if (fixture.total) fixtureCard.querySelector(`input[name="fixtures[${index}][total]"]`).value = fixture.total;
+                if (fixture.words) fixtureCard.querySelector(`input[name="fixtures[${index}][words]"]`).value = fixture.words;
+                if (fixture.specifications) fixtureCard.querySelector(`textarea[name="fixtures[${index}][specifications]"]`).value = fixture.specifications;
+            }
+        });
+    } else {
+        // No fixtures in draft, add default ones
+        addFixture();
+        addFixture();
+    }
+}
+
+function validateForGeneration() {
+    // Only validate when generating final quotation, not for drafts
+    const requiredFields = [
+        { id: 'quote_no', name: 'Quote Number' },
+        { id: 'to_person', name: 'To Person' },
+        { id: 'firm', name: 'Company/Firm' },
+        { id: 'address', name: 'Address' }
+    ];
+    
+    // Check basic required fields
+    for (let field of requiredFields) {
+        const element = document.getElementById(field.id);
+        if (!element || !element.value.trim()) {
+            alert(`${field.name} is required for generating final quotation.`);
+            if (element) element.focus();
+            return false;
+        }
+    }
+    
+    // Check that at least one fixture has name and description
+    const fixtureCards = document.querySelectorAll('.fixture-card');
+    let hasValidFixture = false;
+    
+    for (let i = 0; i < fixtureCards.length; i++) {
+        const nameInput = fixtureCards[i].querySelector(`input[name="fixtures[${i}][name]"]`);
+        const descInput = fixtureCards[i].querySelector(`input[name="fixtures[${i}][desc]"]`);
+        
+        if (nameInput && descInput && nameInput.value.trim() && descInput.value.trim()) {
+            hasValidFixture = true;
+            break;
+        }
+    }
+    
+    if (!hasValidFixture) {
+        alert('At least one product must have both Name and Description for generating final quotation.');
+        return false;
+    }
+    
+    return true; // All validations passed
+}
+</script>
+
+<style>
+/* Fixture Cards - Match Items Section Style */
+.fixture-card {
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    margin-bottom: 1rem;
+    background: #fff;
+}
+
+.fixture-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    border-radius: 0.375rem 0.375rem 0 0;
+}
+
+.fixture-header h6 {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #495057;
+}
+
+.fixture-content {
+    padding: 1rem;
+}
+
+.fixture-content .form-row {
+    margin-bottom: 0.75rem;
+}
+
+.fixture-content .form-row:last-child {
+    margin-bottom: 0;
+}
+
+/* Responsive adjustments for fixtures */
+@media (max-width: 768px) {
+    .fixture-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+    }
+    
+    .fixture-header .btn {
+        width: 100%;
+    }
+}
+
+/* Readonly revision field styling */
+input[readonly].form-control,
+.readonly-field {
+    background-color: #f8f9fa !important;
+    cursor: not-allowed;
+    border-color: #dee2e6;
+    color: #6c757d;
+}
+
+input[readonly].form-control:focus,
+.readonly-field:focus {
+    box-shadow: none;
+    border-color: #dee2e6;
+    background-color: #f8f9fa !important;
+}
+</style>
+{% endblock %}
