@@ -13,6 +13,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='inquiryhandler',
             name='status',
-            field=models.CharField(choices=[('Enquiry', 'Enquiry'), ('Inputs', 'Inputs'), ('Inspection', 'Inspection'), ('Enquiry Hold', 'Enquiry Hold'), ('Pending', 'Pending'), ('Quotation', 'Quotation'), ('Negotiation', 'Negotiation'), ('PO-Confirm', 'PO-Confirm'), ('PO Hold', 'PO Hold'), ('Design', 'Design'), ('Design Review', 'Design Review'), ('Material Receive', 'Material Receive'), ('Manufacturing', 'Manufacturing'), ('Stage-Inspection', 'Stage-Inspection'), ('Approval', 'Approval'), ('Dispatch', 'Dispatch'), ('GRN', 'GRN'), ('Project Closed', 'Project Closed'), ('Lost', 'Lost')], default='Inputs', help_text='Select current status', max_length=20, verbose_name='Status'),
+            field=models.CharField(choices=[('Inquiry', 'Inquiry'), ('Inputs', 'Inputs'), ('Inspection', 'Inspection'), ('Inquiry Hold', 'Inquiry Hold'), ('Pending', 'Pending'), ('Quotation', 'Quotation'), ('Negotiation', 'Negotiation'), ('PO-Confirm', 'PO-Confirm'), ('PO Hold', 'PO Hold'), ('Design', 'Design'), ('Design Review', 'Design Review'), ('Material Receive', 'Material Receive'), ('Manufacturing', 'Manufacturing'), ('Stage-Inspection', 'Stage-Inspection'), ('Approval', 'Approval'), ('Dispatch', 'Dispatch'), ('GRN', 'GRN'), ('Project Closed', 'Project Closed'), ('Lost', 'Lost')], default='Inputs', help_text='Select current status', max_length=20, verbose_name='Status'),
         ),
     ]

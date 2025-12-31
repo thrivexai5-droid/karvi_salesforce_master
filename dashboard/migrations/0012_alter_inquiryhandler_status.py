@@ -13,6 +13,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='inquiryhandler',
             name='status',
-            field=models.CharField(choices=[('Enquiry', 'Enquiry'), ('Inputs', 'Inputs'), ('Pending', 'Pending'), ('Inspection', 'Inspection'), ('Quotation', 'Quotation'), ('Negotiation', 'Negotiation'), ('Enquiry Hold', 'Enquiry Hold'), ('PO-Confirm', 'PO-Confirm'), ('Design Review', 'Design Review'), ('Manufacturing', 'Manufacturing'), ('Stage-Inspection', 'Stage-Inspection'), ('Dispatch', 'Dispatch'), ('GRN', 'GRN'), ('Project Closed', 'Project Closed'), ('Lost', 'Lost'), ('PO Hold', 'PO Hold'), ('Design', 'Design'), ('Material Receive', 'Material Receive'), ('Approval', 'Approval')], default='Inputs', help_text='Select current status', max_length=20, verbose_name='Status'),
+            field=models.CharField(choices=[('Inquiry', 'Inquiry'), ('Inputs', 'Inputs'), ('Pending', 'Pending'), ('Inspection', 'Inspection'), ('Quotation', 'Quotation'), ('Negotiation', 'Negotiation'), ('Inquiry Hold', 'Inquiry Hold'), ('PO-Confirm', 'PO-Confirm'), ('Design Review', 'Design Review'), ('Manufacturing', 'Manufacturing'), ('Stage-Inspection', 'Stage-Inspection'), ('Dispatch', 'Dispatch'), ('GRN', 'GRN'), ('Project Closed', 'Project Closed'), ('Lost', 'Lost'), ('PO Hold', 'PO Hold'), ('Design', 'Design'), ('Material Receive', 'Material Receive'), ('Approval', 'Approval')], default='Inputs', help_text='Select current status', max_length=20, verbose_name='Status'),
         ),
     ]

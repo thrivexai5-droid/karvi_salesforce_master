@@ -150,11 +150,29 @@
                         <label for="{{ form.sales.id_for_label }}">
                             <i class="bi bi-person-badge-fill"></i> Sales
                         </label>
-                        {{ form.sales }}
-                        {% if form.sales.errors %}
-                        <div class="error-msg">{{ form.sales.errors.0 }}</div>
+                        
+                        {% if form.sales.field.widget.input_type == 'hidden' %}
+                            <!-- Sales user: Show name and hidden field -->
+                            <div class="form-control-plaintext">
+                                <strong>{{ user.get_full_name|default:user.username }}</strong>
+                                <span class="text-muted">({{ user.username }})</span>
+                            </div>
+                            {{ form.sales }}
+                            <small class="form-text">
+                                <i class="bi bi-info-circle"></i> 
+                                Assigned to you (cannot be changed)
+                            </small>
+                        {% else %}
+                            <!-- Admin user: Show dropdown -->
+                            {{ form.sales }}
+                            {% if form.sales.errors %}
+                            <div class="error-msg">{{ form.sales.errors.0 }}</div>
+                            {% endif %}
+                            <small class="form-text">
+                                <i class="bi bi-person"></i> 
+                                {{ form.sales.help_text|default:"Select sales person from database" }}
+                            </small>
                         {% endif %}
-                        <small class="form-text"><i class="bi bi-person"></i> Select sales person from database</small>
                     </div>
 
                     <div class="form-group">
@@ -248,12 +266,12 @@
                     'Inputs': 'e',
                     'Pending': 'e',
                     'Inspection': 'e',
-                    'Enquiry': 'e',
+                    'Inquiry': 'e',
                     'Quotation': 'e',
                     'Negotiation': 'e',
 
                     // Order Stage (prefix: o)
-                    'Enquiry Hold': 'o',
+                    'Inquiry Hold': 'o',
                     'PO-Confirm': 'o',
                     'Design Review': 'o',
                     'Manufacturing': 'o',

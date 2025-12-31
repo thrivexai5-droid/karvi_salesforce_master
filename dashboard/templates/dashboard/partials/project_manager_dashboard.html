@@ -1,0 +1,158 @@
+<!-- Project Manager Dashboard -->
+<div class="row g-4">
+    <!-- Welcome Section -->
+    <div class="col-12">
+        <div class="card border-0 shadow-sm bg-success text-white">
+            <div class="card-body">
+                <h4 class="card-title mb-2">
+                    <i class="bi bi-gear-fill me-2"></i>
+                    Welcome, {{ user.get_full_name|default:user.username }}
+                </h4>
+                <p class="card-text mb-0">Project Manager Dashboard - Track projects and manage additional supplies</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Project Metrics Cards -->
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center">
+                <div class="card-icon mx-auto mb-3">
+                    <i class="bi bi-plus-circle-fill text-success" style="font-size: 2rem;"></i>
+                </div>
+                <h3 class="fw-bold text-success">{{ total_additional_supplies }}</h3>
+                <p class="text-muted mb-0">Additional Supplies</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center">
+                <div class="card-icon mx-auto mb-3">
+                    <i class="bi bi-currency-rupee text-primary" style="font-size: 2rem;"></i>
+                </div>
+                <h3 class="fw-bold text-primary">₹{{ total_supply_value }}</h3>
+                <p class="text-muted mb-0">Total Supply Value</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Project Status Overview -->
+    <div class="col-md-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-transparent">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-kanban me-2"></i>
+                    Project Status Overview
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    {% for status, count in project_counts.items %}
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-center p-3 bg-light rounded">
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1">{{ status }}</h6>
+                                <p class="text-muted mb-0">{{ count }} project{{ count|pluralize }}</p>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge bg-primary fs-6">{{ count }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-transparent">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-lightning-fill me-2"></i>
+                    Quick Actions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'dashboard:additional_supply_management' %}" class="btn btn-outline-success">
+                        <i class="bi bi-plus-circle me-2"></i>
+                        Add Supply
+                    </a>
+                    <button class="btn btn-outline-info" onclick="window.print()">
+                        <i class="bi bi-printer me-2"></i>
+                        Print Report
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="exportData()">
+                        <i class="bi bi-download me-2"></i>
+                        Export Data
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Additional Supplies -->
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-transparent">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-clock-history me-2"></i>
+                    Recent Additional Supplies
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if recent_supplies %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Invoice</th>
+                                <th>Description</th>
+                                <th>Quantity</th>
+                                <th>Amount</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for supply in recent_supplies %}
+                            <tr>
+                                <td>{{ supply.invoice.invoice_number }}</td>
+                                <td>{{ supply.description|truncatechars:50 }}</td>
+                                <td>{{ supply.quantity }}</td>
+                                <td class="fw-bold text-success">₹{{ supply.total_amount|floatformat:2 }}</td>
+                                <td>{{ supply.supply_date|date:"M d, Y" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="bi bi-inbox text-muted" style="font-size: 3rem;"></i>
+                    <p class="text-muted mt-2">No recent additional supplies found</p>
+                    <a href="{% url 'dashboard:additional_supply_management' %}" class="btn btn-primary">
+                        Add First Supply
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Project Manager Dashboard Scripts -->
+<script>
+function exportData() {
+    // Simple export functionality
+    alert('Export functionality will be implemented based on your requirements');
+}
+
+// Add any additional project manager specific scripts here
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Project Manager Dashboard loaded');
+});
+</script>

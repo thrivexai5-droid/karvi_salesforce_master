@@ -210,7 +210,7 @@ Inquiry/opportunity tracking with status-based workflow.
 | created_at | DateTimeField | Auto-add | Creation timestamp |
 | updated_at | DateTimeField | Auto-update | Last update timestamp |
 
-**Status Choices**: `Enquiry`, `Inputs`, `Inspection`, `Enquiry Hold`, `Pending`, `Quotation`, `Negotiation`, `PO-Confirm`, `PO Hold`, `Design`, `Design Review`, `Material Receive`, `Manufacturing`, `Stage-Inspection`, `Approval`, `Dispatch`, `GRN`, `Project Closed`, `Lost`
+**Status Choices**: `Inquiry`, `Inputs`, `Inspection`, `Inquiry Hold`, `Pending`, `Quotation`, `Negotiation`, `PO-Confirm`, `PO Hold`, `Design`, `Design Review`, `Material Receive`, `Manufacturing`, `Stage-Inspection`, `Approval`, `Dispatch`, `GRN`, `Project Closed`, `Lost`
 
 **Business Logic**:
 - `create_id` format: `KEC020JY2025` (auto-generated)

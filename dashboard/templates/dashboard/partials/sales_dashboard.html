@@ -1,0 +1,222 @@
+<!-- Sales Dashboard -->
+<div class="row g-4">
+    <!-- Welcome Section -->
+    <div class="col-12">
+        <div class="card border-0 shadow-sm bg-primary text-white">
+            <div class="card-body">
+                <h4 class="card-title mb-2">
+                    <i class="bi bi-person-badge me-2"></i>
+                    Welcome, {{ user.get_full_name|default:user.username }}
+                </h4>
+                <p class="card-text mb-0">
+                    Sales Dashboard - 
+                    {% if is_user_specific %}
+                        Your assigned inquiries, quotations, and invoices
+                    {% else %}
+                        Manage all inquiries, quotations, and invoices
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sales Metrics Cards -->
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center">
+                <div class="card-icon mx-auto mb-3">
+                    <i class="bi bi-question-circle-fill text-primary" style="font-size: 2rem;"></i>
+                </div>
+                <h3 class="fw-bold text-primary">{{ total_inquiries }}</h3>
+                <p class="text-muted mb-0">
+                    {% if is_user_specific %}My Inquiries{% else %}Total Inquiries{% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center">
+                <div class="card-icon mx-auto mb-3">
+                    <i class="bi bi-clock-fill text-warning" style="font-size: 2rem;"></i>
+                </div>
+                <h3 class="fw-bold text-warning">{{ active_inquiries }}</h3>
+                <p class="text-muted mb-0">
+                    {% if is_user_specific %}My Active Inquiries{% else %}Active Inquiries{% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center">
+                <div class="card-icon mx-auto mb-3">
+                    <i class="bi bi-chat-quote-fill text-success" style="font-size: 2rem;"></i>
+                </div>
+                <h3 class="fw-bold text-success">{{ quotations_sent }}</h3>
+                <p class="text-muted mb-0">
+                    {% if is_user_specific %}My Quotations{% else %}Quotations Sent{% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center">
+                <div class="card-icon mx-auto mb-3">
+                    <i class="bi bi-receipt-cutoff text-info" style="font-size: 2rem;"></i>
+                </div>
+                <h3 class="fw-bold text-info">{{ total_invoices }}</h3>
+                <p class="text-muted mb-0">Total Invoices</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sales Pipeline Chart -->
+    <div class="col-md-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-transparent">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-graph-up me-2"></i>
+                    {% if is_user_specific %}My Sales Pipeline{% else %}Sales Pipeline{% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="salesChart" style="height: 300px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-transparent">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-lightning-fill me-2"></i>
+                    Quick Actions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    {% if user.userprofile.can_access_inquiry_handler %}
+                        <a href="{% url 'dashboard:inquiry_handler_management' %}" class="btn btn-outline-primary">
+                            <i class="bi bi-plus-circle me-2"></i>
+                            {% if is_user_specific %}My Inquiries{% else %}Manage Inquiries{% endif %}
+                        </a>
+                    {% endif %}
+                    {% if user.userprofile.can_access_quotation_generation %}
+                        <a href="{% url 'dashboard:quotation_management' %}" class="btn btn-outline-success">
+                            <i class="bi bi-file-earmark-text me-2"></i>
+                            Create Quotation
+                        </a>
+                    {% endif %}
+                    {% if user.userprofile.can_access_invoice_generation %}
+                        <a href="{% url 'dashboard:invoice_management' %}" class="btn btn-outline-info">
+                            <i class="bi bi-receipt me-2"></i>
+                            Generate Invoice
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-transparent">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-activity me-2"></i>
+                    {% if is_user_specific %}My Performance Overview{% else %}Sales Performance Overview{% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="border-end pe-4">
+                            <h6 class="text-muted">Pending Follow-ups</h6>
+                            <p class="h4 text-warning">{{ pending_invoices }}</p>
+                            <small class="text-muted">Invoices awaiting payment</small>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="ps-4">
+                            <h6 class="text-muted">Conversion Rate</h6>
+                            <p class="h4 text-success">
+                                {% if total_inquiries > 0 %}
+                                    {{ quotations_sent|floatformat:0 }}/{{ total_inquiries }}
+                                {% else %}
+                                    0/0
+                                {% endif %}
+                            </p>
+                            <small class="text-muted">
+                                {% if is_user_specific %}My inquiries to quotations{% else %}Inquiries to quotations{% endif %}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                
+                {% if is_user_specific %}
+                <div class="mt-3 pt-3 border-top">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Note:</strong> You are viewing only inquiries assigned to you. 
+                        Contact your administrator to get access to additional inquiries.
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sales Dashboard Scripts -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Sales Pipeline Chart
+    const salesChartData = {{ sales_chart_data.data|safe }};
+    const salesChartCategories = {{ sales_chart_data.categories|safe }};
+    
+    const salesChartOptions = {
+        chart: {
+            type: 'bar',
+            height: 300,
+            toolbar: { show: false }
+        },
+        series: [{
+            name: 'Inquiries',
+            data: salesChartData
+        }],
+        xaxis: {
+            categories: salesChartCategories,
+            labels: {
+                style: {
+                    fontSize: '12px'
+                }
+            }
+        },
+        colors: ['#0d6efd'],
+        plotOptions: {
+            bar: {
+                borderRadius: 4,
+                columnWidth: '60%'
+            }
+        },
+        dataLabels: {
+            enabled: true,
+            style: {
+                colors: ['#fff']
+            }
+        },
+        grid: {
+            borderColor: '#f1f1f1'
+        }
+    };
+    
+    const salesChart = new ApexCharts(document.querySelector("#salesChart"), salesChartOptions);
+    salesChart.render();
+});
+</script>

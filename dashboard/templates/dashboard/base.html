@@ -32,58 +32,75 @@
                     <!-- Horizontal Navigation Menu -->
                     <nav class="header-nav d-none d-lg-flex">
                         <ul class="nav-menu-header">
+                            <!-- Dashboard - Always visible -->
                             <li class="nav-item-header active">
                                 <a href="{% url 'dashboard:index' %}" class="nav-link-header">
                                     <i class="bi bi-speedometer2"></i>
                                     <span>Dashboard</span>
                                 </a>
                             </li>
-                            <li class="nav-item-header">
-                                <a href="{% url 'dashboard:user_management' %}" class="nav-link-header">
-                                    <i class="bi bi-person-lines-fill"></i>
-                                    <span>User Management</span>
-                                </a>
-                            </li>
-                            <li class="nav-item-header">
-                                <a href="{% url 'dashboard:contact_management' %}" class="nav-link-header">
-                                    <i class="bi bi-building"></i>
-                                    <span>Contacts & Company</span>
-                                </a>
-                            </li>
-                            <li class="nav-item-header">
-                                <a href="{% url 'dashboard:inquiry_handler_management' %}" class="nav-link-header">
-                                    <i class="bi bi-question-circle"></i>
-                                    <span>Inquiry Handler</span>
-                                </a>
-                            </li>
+                            
+                            <!-- Admin/Master Role - Full Access -->
+                            {% if user.userprofile.get_roles_list == 'admin' or user.userprofile.get_roles_list == 'manager' %}
+                                <li class="nav-item-header">
+                                    <a href="{% url 'dashboard:user_management' %}" class="nav-link-header">
+                                        <i class="bi bi-person-lines-fill"></i>
+                                        <span>User Management</span>
+                                    </a>
+                                </li>
+                                <li class="nav-item-header">
+                                    <a href="{% url 'dashboard:contact_management' %}" class="nav-link-header">
+                                        <i class="bi bi-building"></i>
+                                        <span>Contacts & Company</span>
+                                    </a>
+                                </li>
+                                <li class="nav-item-header">
+                                    <a href="{% url 'dashboard:purchase_order_management' %}" class="nav-link-header">
+                                        <i class="bi bi-file-earmark-text"></i>
+                                        <span>Purchase Orders</span>
+                                    </a>
+                                </li>
+                            {% endif %}
 
-                            <li class="nav-item-header">
-                                <a href="{% url 'dashboard:quotation_management' %}" class="nav-link-header">
-                                    <i class="bi bi-chat-quote"></i>
-                                    <span>Quotations</span>
-                                </a>
-                            </li>
+                            <!-- Inquiry Handler - Check specific permission -->
+                            {% if user.userprofile.get_roles_list == 'admin' or user.userprofile.get_roles_list == 'manager' or user.userprofile.can_access_inquiry_handler %}
+                                <li class="nav-item-header">
+                                    <a href="{% url 'dashboard:inquiry_handler_management' %}" class="nav-link-header">
+                                        <i class="bi bi-question-circle"></i>
+                                        <span>Inquiry Handler</span>
+                                    </a>
+                                </li>
+                            {% endif %}
 
-                            <li class="nav-item-header">
-                                <a href="{% url 'dashboard:purchase_order_management' %}" class="nav-link-header">
-                                    <i class="bi bi-file-earmark-text"></i>
-                                    <span>Purchase Orders</span>
-                                </a>
-                            </li>
+                            <!-- Quotations - Check specific permission -->
+                            {% if user.userprofile.get_roles_list == 'admin' or user.userprofile.get_roles_list == 'manager' or user.userprofile.can_access_quotation_generation %}
+                                <li class="nav-item-header">
+                                    <a href="{% url 'dashboard:quotation_management' %}" class="nav-link-header">
+                                        <i class="bi bi-chat-quote"></i>
+                                        <span>Quotations</span>
+                                    </a>
+                                </li>
+                            {% endif %}
 
-                            <li class="nav-item-header">
-                                <a href="{% url 'dashboard:invoice_management' %}" class="nav-link-header">
-                                    <i class="bi bi-receipt"></i>
-                                    <span>Invoice Generation</span>
-                                </a>
-                            </li>
+                            <!-- Invoice Generation - Check specific permission -->
+                            {% if user.userprofile.get_roles_list == 'admin' or user.userprofile.get_roles_list == 'manager' or user.userprofile.can_access_invoice_generation %}
+                                <li class="nav-item-header">
+                                    <a href="{% url 'dashboard:invoice_management' %}" class="nav-link-header">
+                                        <i class="bi bi-receipt"></i>
+                                        <span>Invoice Generation</span>
+                                    </a>
+                                </li>
+                            {% endif %}
 
-                            <li class="nav-item-header">
-                                <a href="{% url 'dashboard:additional_supply_management' %}" class="nav-link-header">
-                                    <i class="bi bi-plus-circle"></i>
-                                    <span>Additional Supply</span>
-                                </a>
-                            </li>
+                            <!-- Additional Supply - Check specific permission -->
+                            {% if user.userprofile.get_roles_list == 'admin' or user.userprofile.get_roles_list == 'manager' or user.userprofile.can_access_additional_supply %}
+                                <li class="nav-item-header">
+                                    <a href="{% url 'dashboard:additional_supply_management' %}" class="nav-link-header">
+                                        <i class="bi bi-plus-circle"></i>
+                                        <span>Additional Supply</span>
+                                    </a>
+                                </li>
+                            {% endif %}
 
                         </ul>
                     </nav>
@@ -126,54 +143,75 @@
             <!-- Mobile Navigation Menu -->
             <div class="collapse mobile-nav-menu" id="mobileNav">
                 <ul class="nav-menu-mobile">
+                    <!-- Dashboard - Always visible -->
                     <li class="nav-item-mobile active">
                         <a href="{% url 'dashboard:index' %}" class="nav-link-mobile">
                             <i class="bi bi-speedometer2"></i>
                             <span>Dashboard</span>
                         </a>
                     </li>
-                    <li class="nav-item-mobile">
-                        <a href="{% url 'dashboard:user_management' %}" class="nav-link-mobile">
-                            <i class="bi bi-person-lines-fill"></i>
-                            <span>User Management</span>
-                        </a>
-                    </li>
-                    <li class="nav-item-mobile">
-                        <a href="{% url 'dashboard:contact_management' %}" class="nav-link-mobile">
-                            <i class="bi bi-building"></i>
-                            <span>Contacts & Company</span>
-                        </a>
-                    </li>
-                    <li class="nav-item-mobile">
-                        <a href="{% url 'dashboard:purchase_order_management' %}" class="nav-link-mobile">
-                            <i class="bi bi-file-earmark-text"></i>
-                            <span>Purchase Orders</span>
-                        </a>
-                    </li>
-                    <li class="nav-item-mobile">
-                        <a href="{% url 'dashboard:invoice_management' %}" class="nav-link-mobile">
-                            <i class="bi bi-receipt"></i>
-                            <span>Invoice Generation</span>
-                        </a>
-                    </li>
-                    <li class="nav-item-mobile">
-                        <a href="{% url 'dashboard:inquiry_handler_management' %}" class="nav-link-mobile">
-                            <i class="bi bi-question-circle"></i>
-                            <span>Inquiry Handler</span>
-                        </a>
-                    </li>
-                    <li class="nav-item-mobile">
-                        <a href="{% url 'dashboard:quotation_management' %}" class="nav-link-mobile">
-                            <i class="bi bi-chat-quote"></i>
-                            <span>Quotations</span>
-                        </a>
-                    </li>
-                    <li class="nav-item-mobile">
-                        <a href="{% url 'dashboard:additional_supply_management' %}" class="nav-link-mobile">
-                            <i class="bi bi-plus-circle"></i>
-                            <span>Additional Supply</span>
-                        </a>
-                    </li>
+                    
+                    <!-- Admin/Master Role - Full Access -->
+                    {% if user.userprofile.get_roles_list == 'admin' or user.userprofile.get_roles_list == 'manager' %}
+                        <li class="nav-item-mobile">
+                            <a href="{% url 'dashboard:user_management' %}" class="nav-link-mobile">
+                                <i class="bi bi-person-lines-fill"></i>
+                                <span>User Management</span>
+                            </a>
+                        </li>
+                        <li class="nav-item-mobile">
+                            <a href="{% url 'dashboard:contact_management' %}" class="nav-link-mobile">
+                                <i class="bi bi-building"></i>
+                                <span>Contacts & Company</span>
+                            </a>
+                        </li>
+                        <li class="nav-item-mobile">
+                            <a href="{% url 'dashboard:purchase_order_management' %}" class="nav-link-mobile">
+                                <i class="bi bi-file-earmark-text"></i>
+                                <span>Purchase Orders</span>
+                            </a>
+                        </li>
+                    {% endif %}
+
+                    <!-- Inquiry Handler - Check specific permission -->
+                    {% if user.userprofile.get_roles_list == 'admin' or user.userprofile.get_roles_list == 'manager' or user.userprofile.can_access_inquiry_handler %}
+                        <li class="nav-item-mobile">
+                            <a href="{% url 'dashboard:inquiry_handler_management' %}" class="nav-link-mobile">
+                                <i class="bi bi-question-circle"></i>
+                                <span>Inquiry Handler</span>
+                            </a>
+                        </li>
+                    {% endif %}
+
+                    <!-- Quotations - Check specific permission -->
+                    {% if user.userprofile.get_roles_list == 'admin' or user.userprofile.get_roles_list == 'manager' or user.userprofile.can_access_quotation_generation %}
+                        <li class="nav-item-mobile">
+                            <a href="{% url 'dashboard:quotation_management' %}" class="nav-link-mobile">
+                                <i class="bi bi-chat-quote"></i>
+                                <span>Quotations</span>
+                            </a>
+                        </li>
+                    {% endif %}
+
+                    <!-- Invoice Generation - Check specific permission -->
+                    {% if user.userprofile.get_roles_list == 'admin' or user.userprofile.get_roles_list == 'manager' or user.userprofile.can_access_invoice_generation %}
+                        <li class="nav-item-mobile">
+                            <a href="{% url 'dashboard:invoice_management' %}" class="nav-link-mobile">
+                                <i class="bi bi-receipt"></i>
+                                <span>Invoice Generation</span>
+                            </a>
+                        </li>
+                    {% endif %}
+
+                    <!-- Additional Supply - Check specific permission -->
+                    {% if user.userprofile.get_roles_list == 'admin' or user.userprofile.get_roles_list == 'manager' or user.userprofile.can_access_additional_supply %}
+                        <li class="nav-item-mobile">
+                            <a href="{% url 'dashboard:additional_supply_management' %}" class="nav-link-mobile">
+                                <i class="bi bi-plus-circle"></i>
+                                <span>Additional Supply</span>
+                            </a>
+                        </li>
+                    {% endif %}
                 </ul>
             </div>
         </header>

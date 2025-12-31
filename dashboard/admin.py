@@ -11,9 +11,9 @@ class UserProfileAdmin(admin.ModelAdmin):
 
 @admin.register(Company)
 class CompanyAdmin(admin.ModelAdmin):
-    list_display = ['company_name', 'city_1', 'city_2', 'created_at']
-    list_filter = ['city_1', 'created_at']
-    search_fields = ['company_name', 'city_1', 'city_2']
+    list_display = ['company_name', 'city', 'created_at']
+    list_filter = ['city', 'created_at']
+    search_fields = ['company_name', 'city']
     readonly_fields = ['created_at', 'updated_at']
 
 @admin.register(Contact)

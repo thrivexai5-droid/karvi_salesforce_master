@@ -69,4 +69,5 @@ urlpatterns = [
     path('ajax/save-purchase-order-items/', views.save_purchase_order_items_ajax, name='save_purchase_order_items_ajax'),
     path('ajax/get-purchase-order-items/', views.get_purchase_order_items_ajax, name='get_purchase_order_items_ajax'),
     path('ajax/search-customers/', views.search_customers_ajax, name='search_customers_ajax'),
+    path('ajax/fetch-quotation-data/', views.fetch_quotation_data_ajax, name='fetch_quotation_data_ajax'),
 ]

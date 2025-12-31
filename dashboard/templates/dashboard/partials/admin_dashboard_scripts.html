@@ -1,0 +1,548 @@
+<!-- Admin Dashboard Scripts -->
+<script id="chart-data" type="application/json">
+{
+    "chartData": {% if inquiry_chart_data.data %}{{ inquiry_chart_data.data|safe }}{% else %}[]{% endif %},
+    "chartCategories": {% if inquiry_chart_data.categories %}{{ inquiry_chart_data.categories|safe }}{% else %}[]{% endif %}
+}
+</script>
+
+<script id="dashboard-data" type="application/json">
+{
+    "totalValue": {{ total_value_raw|default:0 }},
+    "paidTotalValue": {{ paid_total_value_raw|default:0 }},
+    "totalValueFormatted": "{{ total_value|default:'0' }}",
+    "paidTotalValueFormatted": "{{ paid_total_value|default:'0' }}",
+    "maxPaymentDueDate": "{{ max_date|default:'—' }}"
+}
+</script>
+
+<script>
+    // Get dynamic data from JSON
+    const dashboardData = JSON.parse(document.getElementById('dashboard-data').textContent);
+    const chartDataJson = JSON.parse(document.getElementById('chart-data').textContent);
+    
+    // ApexCharts Configuration
+    document.addEventListener('DOMContentLoaded', function() {
+        
+        // Responsive chart height based on screen size
+        function getChartHeight() {
+            const screenWidth = window.innerWidth;
+            if (screenWidth >= 1280 && screenWidth <= 1440) {
+                return 240; // Laptop screens - compact height
+            }
+            return 280; // Default height for other screens
+        }
+        
+        // Common chart options
+        const commonOptions = {
+            chart: {
+                type: 'donut',
+                height: getChartHeight(),
+                animations: {
+                    enabled: true,
+                    easing: 'easeinout',
+                    speed: 800
+                },
+                dropShadow: {
+                    enabled: true,
+                    color: '#000',
+                    top: 18,
+                    left: 7,
+                    blur: 10,
+                    opacity: 0.2
+                }
+            },
+            legend: {
+                position: 'bottom',
+                fontSize: '13px',
+                fontFamily: 'Inter, sans-serif',
+                markers: {
+                    width: 20,
+                    height: 14,
+                    strokeWidth: 0,
+                    strokeColor: '',
+                    fillColors: undefined,
+                    radius: 20,
+                    customHTML: undefined,
+                    onClick: undefined,
+                    offsetX: 0,
+                    offsetY: 0
+                }
+            },
+            tooltip: {
+                enabled: true,
+                theme: 'dark',
+                style: {
+                    fontSize: '14px',
+                    fontFamily: 'Inter, sans-serif'
+                }
+            },
+            plotOptions: {
+                pie: {
+                    donut: {
+                        size: '55%'
+                    }
+                }
+            },
+            dataLabels: {
+                enabled: true,
+                formatter: function (val) {
+                    return val.toFixed(1) + "%"
+                },
+                style: {
+                    fontSize: '12px',
+                    fontFamily: 'Inter, sans-serif',
+                    fontWeight: 'bold',
+                    colors: ['#fff']
+                },
+                dropShadow: {
+                    enabled: true
+                }
+            }
+        };
+
+        // Chart 1 - Sales Distribution (Dynamic Data)
+        const chart1Options = {
+            ...commonOptions,
+            series: [35, dashboardData.totalValue, dashboardData.paidTotalValue],
+            labels: ['Sales closed', 'UEOB', 'Collection'],
+            colors: ['#00B0F0', '#FFFF00', '#FF0000'],
+            tooltip: {
+                enabled: true,
+                theme: 'dark',
+                style: {
+                    fontSize: '14px',
+                    fontFamily: 'Inter, sans-serif'
+                },
+                y: {
+                    formatter: function (val, opts) {
+                        if (opts.seriesIndex === 1) {
+                            return 'UEOB: ₹' + dashboardData.totalValueFormatted;
+                        } else if (opts.seriesIndex === 2) {
+                            return 'Collection: ₹' + dashboardData.paidTotalValueFormatted;
+                        }
+                        return 'Sales closed: ' + val;
+                    }
+                }
+            }
+        };
+        const chart1 = new ApexCharts(document.querySelector("#apexChart1"), chart1Options);
+        chart1.render();
+
+        // Chart 2 - User Demographics
+        const chart2Options = {
+            ...commonOptions,
+            series: [30, 40, 20],
+            labels: ['Sold', 'Sales Gap', 'Further'],
+            colors: ['#00B0F0', '#FF0000', '#FFFF00']
+        };
+        const chart2 = new ApexCharts(document.querySelector("#apexChart2"), chart2Options);
+        chart2.render();
+
+        // Chart 3 - Leads chart (Bar Chart) - Fixed configuration
+        const chartData = chartDataJson.chartData || [];
+        const chartCategories = chartDataJson.chartCategories || [];
+        
+        const chart3Options = {
+            chart: {
+                type: 'bar',
+                height: 380,
+                width: '100%',
+                animations: {
+                    enabled: true,
+                    easing: 'easeinout',
+                    speed: 800
+                },
+                toolbar: {
+                    show: false
+                },
+                background: 'transparent'
+            },
+            series: [{
+                name: 'Inquiries',
+                data: chartData
+            }],
+            xaxis: {
+                categories: chartCategories,
+                labels: {
+                    show: true,
+                    style: {
+                        fontSize: '10px',
+                        fontFamily: 'Inter, sans-serif',
+                        fontWeight: '600',
+                        colors: '#495057'
+                    },
+                    rotate: -30,
+                    rotateAlways: false,
+                    maxHeight: 100,
+                    trim: true,
+                    hideOverlappingLabels: true,
+                    offsetY: 8,
+                    offsetX: 0,
+                    formatter: function(value) {
+                        // Truncate long labels to prevent overlap
+                        if (value && value.length > 12) {
+                            return value.substring(0, 10) + '...';
+                        }
+                        return value;
+                    }
+                },
+                axisBorder: {
+                    show: true,
+                    color: '#dee2e6'
+                },
+                axisTicks: {
+                    show: true,
+                    color: '#dee2e6'
+                }
+            },
+            yaxis: {
+                labels: {
+                    show: true,
+                    style: {
+                        fontSize: '12px',
+                        fontFamily: 'Inter, sans-serif',
+                        colors: '#495057'
+                    },
+                    formatter: function (val) {
+                        return Math.floor(val);
+                    }
+                },
+                title: {
+                    text: 'Number of Inquiries',
+                    style: {
+                        fontSize: '13px',
+                        fontFamily: 'Inter, sans-serif',
+                        color: '#495057'
+                    }
+                }
+            },
+            colors: ['#2563EB'],
+            plotOptions: {
+                bar: {
+                    distributed: false,
+                    horizontal: false,
+                    columnWidth: '60%',
+                    borderRadius: 4,
+                    dataLabels: {
+                        position: 'center'
+                    }
+                }
+            },
+            dataLabels: {
+                enabled: true,
+                formatter: function (val) {
+                    return val > 0 ? val : '';
+                },
+                style: {
+                    fontSize: '12px',
+                    fontFamily: 'Inter, sans-serif',
+                    fontWeight: 'bold',
+                    colors: ['#ffffff']
+                },
+                offsetY: 0,
+                textAnchor: 'middle',
+                distributed: false,
+                dropShadow: {
+                    enabled: true,
+                    top: 1,
+                    left: 1,
+                    blur: 2,
+                    color: '#000000',
+                    opacity: 0.8
+                }
+            },
+            legend: {
+                show: false
+            },
+            tooltip: {
+                enabled: true,
+                theme: 'light',
+                style: {
+                    fontSize: '14px',
+                    fontFamily: 'Inter, sans-serif'
+                },
+                y: {
+                    formatter: function (val, opts) {
+                        const categoryName = opts.w.globals.categoryLabels[opts.dataPointIndex];
+                        return val + ' inquiries in ' + categoryName + ' status';
+                    }
+                }
+            },
+            grid: {
+                show: true,
+                borderColor: '#f0f0f0',
+                strokeDashArray: 3,
+                position: 'back',
+                xaxis: {
+                    lines: {
+                        show: false
+                    }
+                },
+                yaxis: {
+                    lines: {
+                        show: true
+                    }
+                },
+                padding: {
+                    top: 30,
+                    right: 30,
+                    bottom: 70,
+                    left: 30
+                }
+            },
+            stroke: {
+                show: true,
+                width: 2,
+                colors: ['transparent']
+            }
+        };
+        const chart3 = new ApexCharts(document.querySelector("#apexChart3"), chart3Options);
+        chart3.render();
+        
+        // Force chart refresh after a short delay to ensure proper rendering
+        setTimeout(() => {
+            chart3.updateOptions({
+                dataLabels: {
+                    enabled: true,
+                    style: {
+                        fontSize: '12px',
+                        fontFamily: 'Inter, sans-serif',
+                        fontWeight: 'bold',
+                        colors: ['#ffffff']
+                    }
+                },
+                xaxis: {
+                    labels: {
+                        show: true,
+                        style: {
+                            fontSize: '11px',
+                            fontFamily: 'Inter, sans-serif',
+                            fontWeight: '600',
+                            colors: ['#495057']
+                        }
+                    }
+                }
+            });
+        }, 500);
+    });
+</script>
+
+<style>
+/* Enhanced CSS for Leads chart with proper bar visibility */
+#apexChart3 {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+#apexChart3 .apexcharts-canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* CRITICAL: Force data labels to be WHITE and positioned ON bars */
+#apexChart3 .apexcharts-datalabel text,
+#apexChart3 .apexcharts-datalabels text,
+#apexChart3 .apexcharts-datalabel-label {
+    font-size: 12px !important;
+    font-weight: bold !important;
+    fill: #ffffff !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.8) !important;
+    filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.8)) !important;
+    text-anchor: middle !important;
+    dominant-baseline: central !important;
+}
+
+/* CRITICAL: Force X-axis labels to be visible and properly spaced */
+#apexChart3 .apexcharts-xaxis-texts-g text {
+    font-size: 10px !important;
+    font-weight: 600 !important;
+    fill: #495057 !important;
+    text-anchor: end !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+/* Prevent label overlap */
+#apexChart3 .apexcharts-xaxis-texts-g {
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+/* Ensure proper spacing between labels */
+#apexChart3 .apexcharts-xaxis .apexcharts-xaxis-texts-g text {
+    dominant-baseline: auto !important;
+}
+
+/* CRITICAL: Force Y-axis labels styling */
+#apexChart3 .apexcharts-yaxis-texts-g text {
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    fill: #495057 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+/* Ensure bars are properly visible with centered labels */
+#apexChart3 .apexcharts-bar-area {
+    stroke-width: 0 !important;
+    opacity: 1 !important;
+}
+
+#apexChart3 .apexcharts-series path {
+    stroke-width: 0 !important;
+    opacity: 1 !important;
+}
+
+/* Force data labels to center on bars */
+#apexChart3 .apexcharts-datalabels {
+    pointer-events: none !important;
+}
+
+#apexChart3 .apexcharts-datalabels .apexcharts-datalabel {
+    text-anchor: middle !important;
+}
+
+/* Grid styling */
+#apexChart3 .apexcharts-gridlines-horizontal line {
+    stroke: #f0f0f0 !important;
+    stroke-dasharray: 3 !important;
+    opacity: 0.7 !important;
+}
+
+/* Chart container */
+.chart-container .chart-wrapper {
+    min-height: 450px !important;
+    width: 100% !important;
+    overflow: visible !important;
+}
+
+/* Chart title styling */
+.chart-container .chart-title {
+    font-size: 1.1rem !important;
+    font-weight: 600 !important;
+    color: #495057 !important;
+    margin-bottom: 1rem !important;
+    text-align: center !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+    #apexChart3 .apexcharts-xaxis-texts-g text {
+        font-size: 9px !important;
+    }
+    
+    #apexChart3 .apexcharts-datalabel text,
+    #apexChart3 .apexcharts-datalabels text,
+    #apexChart3 .apexcharts-datalabel-label {
+        font-size: 11px !important;
+    }
+    
+    .chart-container .chart-wrapper {
+        min-height: 420px !important;
+    }
+}
+
+@media (max-width: 768px) {
+    #apexChart3 .apexcharts-xaxis-texts-g text {
+        font-size: 8px !important;
+    }
+    
+    #apexChart3 .apexcharts-datalabel text,
+    #apexChart3 .apexcharts-datalabels text,
+    #apexChart3 .apexcharts-datalabel-label {
+        font-size: 10px !important;
+    }
+    
+    .chart-container .chart-wrapper {
+        min-height: 400px !important;
+    }
+    
+    .dashboard-layout > .chart-container:nth-child(4) {
+        padding: 1rem !important;
+    }
+}
+
+/* CRITICAL: Force chart container to allow overflow for labels */
+.chart-container {
+    overflow: visible !important;
+}
+
+.chart-wrapper {
+    overflow: visible !important;
+}
+
+/* CRITICAL: Ensure ApexCharts SVG allows overflow */
+#apexChart3 svg {
+    overflow: visible !important;
+}
+
+#apexChart3 .apexcharts-svg {
+    overflow: visible !important;
+}
+
+/* Value Cards Container - Two cards side by side */
+.value-cards-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    height: 100%;
+}
+
+.value-cards-container .small-card {
+    flex: 1;
+    min-height: 120px;
+    display: flex;
+    align-items: center;
+}
+
+.value-cards-container .small-card .card-body {
+    padding: 1rem 0.75rem;
+    height: 100%;
+}
+
+.value-cards-container .card-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.2rem;
+}
+
+.value-cards-container .card-icon i {
+    font-size: 1.1rem;
+}
+
+.value-cards-container .card-subtitle {
+    font-size: 0.7rem;
+    letter-spacing: 0.5px;
+}
+
+.value-cards-container .card-value {
+    font-size: 1.4rem;
+    color: #2c3e50;
+    line-height: 1.2;
+}
+
+/* Responsive adjustments for value cards */
+@media (max-width: 768px) {
+    .value-cards-container {
+        flex-direction: row;
+        gap: 0.5rem;
+    }
+    
+    .value-cards-container .card-value {
+        font-size: 1.2rem;
+    }
+    
+    .value-cards-container .card-subtitle {
+        font-size: 0.65rem;
+    }
+}
+</style>

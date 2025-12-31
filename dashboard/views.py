@@ -383,7 +383,38 @@ class UserEditForm(forms.Form):
 
 @login_required
 def dashboard_view(request):
-    """Main dashboard view - requires authentication"""
+    """Main dashboard view with role-based content - requires authentication"""
+    from decimal import Decimal
+    from django.db.models import Count, Case, When, IntegerField, Max
+    from datetime import datetime
+    
+    # Get user role
+    user_role = request.user.userprofile.get_roles_list()
+    
+    # Base context for all users
+    context = {
+        'user_role': user_role,
+    }
+    
+    # Role-specific dashboard content
+    if user_role in ['admin', 'manager']:
+        # Admin/Manager - Full dashboard with all metrics
+        context.update(get_full_dashboard_data())
+    elif user_role == 'sales':
+        # Sales - Focus on inquiries, quotations, and invoices (user-specific)
+        context.update(get_sales_dashboard_data(request.user))
+    elif user_role == 'project_manager':
+        # Project Manager - Focus on additional supplies and project tracking
+        context.update(get_project_manager_dashboard_data())
+    else:
+        # Default - Basic dashboard
+        context.update(get_basic_dashboard_data())
+    
+    return render(request, 'dashboard/index.html', context)
+
+
+def get_full_dashboard_data():
+    """Get complete dashboard data for admin/manager roles"""
     from decimal import Decimal
     from django.db.models import Count, Case, When, IntegerField, Max
     from datetime import datetime
@@ -443,8 +474,8 @@ def dashboard_view(request):
         
         # Define the exact statuses to include in the chart (as per requirements)
         chart_statuses = [
-            'Inputs', 'Pending', 'Inspection', 'Enquiry', 'Quotation', 'Negotiation',
-            'Enquiry Hold', 'PO-Confirm', 'Design Review', 'Manufacturing',
+            'Inputs', 'Pending', 'Inspection', 'Inquiry', 'Quotation', 'Negotiation',
+            'Inquiry Hold', 'PO-Confirm', 'Design Review', 'Manufacturing',
             'Stage-Inspection', 'Dispatch', 'GRN', 'Project Closed', 'Lost', 'PO Hold'
         ]
         
@@ -490,7 +521,8 @@ def dashboard_view(request):
         sustainability_status = "Healthy"
         sustainability_color = "success"
     
-    context = {
+    return {
+        'dashboard_type': 'full',
         'max_date': max_date_formatted,
         'max_date_label': 'Payment Due (MAX)',
         'sustainance_date': sustainability_data['sustainability_date'].strftime('%d-%m-%Y'),
@@ -510,8 +542,95 @@ def dashboard_view(request):
         'paid_invoices_count': paid_invoices_count,
         'inquiry_chart_data': inquiry_chart_data,
     }
+
+
+def get_sales_dashboard_data(user=None):
+    """Get sales-focused dashboard data - filtered by user if provided"""
+    from decimal import Decimal
+    import json
     
-    return render(request, 'dashboard/index.html', context)
+    def format_indian_currency(amount):
+        if amount == 0:
+            return "0"
+        amount_float = float(amount)
+        return f"{amount_float:,.0f}"
+    
+    # Filter inquiries by user if provided (for sales users)
+    if user and user.userprofile.get_roles_list() == 'sales':
+        # Sales user - only their assigned inquiries
+        inquiry_filter = {'sales': user}
+        total_inquiries = InquiryHandler.objects.filter(sales=user).count()
+        active_inquiries = InquiryHandler.objects.filter(sales=user).exclude(status__in=['Project Closed', 'Lost']).count()
+        quotations_sent = InquiryHandler.objects.filter(sales=user, status='Quotation').count()
+    else:
+        # Admin or no user specified - all inquiries
+        inquiry_filter = {}
+        total_inquiries = InquiryHandler.objects.count()
+        active_inquiries = InquiryHandler.objects.exclude(status__in=['Project Closed', 'Lost']).count()
+        quotations_sent = InquiryHandler.objects.filter(status='Quotation').count()
+    
+    # Invoice metrics for sales (all invoices for now - can be filtered later if needed)
+    total_invoices = Invoice.objects.count()
+    pending_invoices = Invoice.objects.exclude(status='paid').count()
+    
+    # Sales-specific inquiry status chart (filtered by user if applicable)
+    sales_statuses = ['Enquiry', 'Inputs', 'Quotation', 'Negotiation', 'PO-Confirm', 'Lost']
+    sales_status_counts = {}
+    for status in sales_statuses:
+        filter_params = {'status': status}
+        if inquiry_filter:
+            filter_params.update(inquiry_filter)
+        sales_status_counts[status] = InquiryHandler.objects.filter(**filter_params).count()
+    
+    sales_chart_data = {
+        'categories': json.dumps(sales_statuses),
+        'data': json.dumps([sales_status_counts[status] for status in sales_statuses])
+    }
+    
+    return {
+        'dashboard_type': 'sales',
+        'total_inquiries': total_inquiries,
+        'active_inquiries': active_inquiries,
+        'quotations_sent': quotations_sent,
+        'total_invoices': total_invoices,
+        'pending_invoices': pending_invoices,
+        'sales_chart_data': sales_chart_data,
+        'is_user_specific': bool(user and user.userprofile.get_roles_list() == 'sales'),
+    }
+
+
+def get_project_manager_dashboard_data():
+    """Get project manager-focused dashboard data"""
+    from decimal import Decimal
+    
+    def format_indian_currency(amount):
+        if amount == 0:
+            return "0"
+        amount_float = float(amount)
+        return f"{amount_float:,.0f}"
+    
+    # Project management metrics
+    total_additional_supplies = AdditionalSupply.objects.count()
+    total_supply_value = AdditionalSupply.objects.aggregate(total=Sum('total_amount'))['total'] or Decimal('0')
+    
+    # Project status from inquiries
+    project_statuses = ['Design', 'Design Review', 'Manufacturing', 'Stage-Inspection', 'Dispatch']
+    project_counts = {}
+    for status in project_statuses:
+        project_counts[status] = InquiryHandler.objects.filter(status=status).count()
+    
+    # Recent additional supplies
+    recent_supplies = AdditionalSupply.objects.select_related('invoice').order_by('-created_at')[:5]
+    
+    return {
+        'dashboard_type': 'project_manager',
+        'total_additional_supplies': total_additional_supplies,
+        'total_supply_value': format_indian_currency(total_supply_value),
+        'project_counts': project_counts,
+        'recent_supplies': recent_supplies,
+    }
+
+
 
 @login_required
 def user_management_view(request):
@@ -557,8 +676,18 @@ def user_create_view(request):
                 first_name = name_parts[0]
                 last_name = name_parts[1] if len(name_parts) > 1 else ''
                 
-                # Generate username from email
-                username = form.cleaned_data['email'].split('@')[0]
+                # Generate username from name (not email)
+                name_for_username = form.cleaned_data['name'].lower().replace(' ', '')
+                # Remove any special characters and keep only alphanumeric
+                import re
+                username = re.sub(r'[^a-zA-Z0-9]', '', name_for_username)
+                
+                # Ensure username is not empty and has minimum length
+                if not username or len(username) < 3:
+                    # Fallback to email if name is too short or invalid
+                    username = form.cleaned_data['email'].split('@')[0]
+                
+                # Check for uniqueness and add counter if needed
                 counter = 1
                 original_username = username
                 while User.objects.filter(username=username).exists():
@@ -734,26 +863,26 @@ def custom_logout_view(request):
 class CompanyForm(forms.ModelForm):
     class Meta:
         model = Company
-        fields = ['company_name', 'city_1', 'address_1']
+        fields = ['company_name', 'city', 'address']
         widgets = {
             'company_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter company name'}),
-            'city_1': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter city'}),
-            'address_1': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Enter company address'}),
+            'city': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter city'}),
+            'address': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Enter company address'}),
         }
     
     def clean(self):
         cleaned_data = super().clean()
         company_name = cleaned_data.get('company_name')
-        city_1 = cleaned_data.get('city_1')
+        city = cleaned_data.get('city')
         
         # Check for unique (company_name, city) combination
         # Same company cannot have the same city twice, but different companies can share cities
-        if company_name and city_1:
-            existing = Company.objects.filter(company_name=company_name, city_1=city_1)
+        if company_name and city:
+            existing = Company.objects.filter(company_name=company_name, city=city)
             if self.instance and self.instance.pk:
                 existing = existing.exclude(pk=self.instance.pk)
             if existing.exists():
-                raise forms.ValidationError(f"This company already exists for the selected city. Company '{company_name}' is already registered in '{city_1}'.")
+                raise forms.ValidationError(f"This company already exists for the selected city. Company '{company_name}' is already registered in '{city}'.")
         
         return cleaned_data
 
@@ -766,11 +895,10 @@ def company_management_view(request):
     if search_query:
         companies = companies.filter(
             Q(company_name__icontains=search_query) |
-            Q(city_1__icontains=search_query) |
-            Q(city_2__icontains=search_query)
+            Q(city__icontains=search_query)
         )
     
-    companies = companies.order_by('company_name', 'city_1')
+    companies = companies.order_by('company_name', 'city')
     
     # Pagination
     paginator = Paginator(companies, 10)
@@ -891,7 +1019,7 @@ class ContactForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Order companies by name and city
-        self.fields['company'].queryset = Company.objects.all().order_by('company_name', 'city_1')
+        self.fields['company'].queryset = Company.objects.all().order_by('company_name', 'city')
         
         # If editing existing contact, set the company field
         if self.instance and self.instance.pk and self.instance.company:
@@ -922,11 +1050,10 @@ def contact_management_view(request):
         if search_query:
             companies = companies.filter(
                 Q(company_name__icontains=search_query) |
-                Q(city_1__icontains=search_query) |
-                Q(city_2__icontains=search_query)
+                Q(city__icontains=search_query)
             )
         
-        companies = companies.order_by('company_name', 'city_1')
+        companies = companies.order_by('company_name', 'city')
         
         # Pagination
         paginator = Paginator(companies, 10)
@@ -1323,8 +1450,7 @@ def get_company_data_ajax(request):
             'success': True,
             'company_id': company.id,
             'company_name': company.company_name,
-            'primary_city': company.city_1,
-            'secondary_city': company.city_2 or '',
+            'primary_city': company.city,
             'cities_display': company.get_cities_display(),
             'location_city': company.get_primary_city(),
             'addresses': company.get_addresses_list()
@@ -1682,7 +1808,7 @@ def invoice_management_view(request):
 
 @login_required
 def invoice_create_view(request):
-    """Create new invoice"""
+    """Create Invoice"""
     if request.method == 'POST':
         form = InvoiceForm(request.POST)
         
@@ -1711,7 +1837,7 @@ def invoice_create_view(request):
     
     return render(request, 'dashboard/invoice_form.html', {
         'form': form,
-        'title': 'Create New Invoice',
+        'title': 'Create Invoice',
         'action': 'Create'
     })
 
@@ -1856,7 +1982,7 @@ class InquiryHandlerForm(forms.ModelForm):
         help_text="Select customer from database"
     )
     
-    # Sales dropdown - replaces BA field
+    # Sales dropdown - replaces BA field (behavior depends on user role)
     sales = forms.ModelChoiceField(
         queryset=User.objects.filter(userprofile__roles__contains='sales'),
         empty_label="Select Sales Person",
@@ -1899,13 +2025,32 @@ class InquiryHandlerForm(forms.ModelForm):
         }
     
     def __init__(self, *args, **kwargs):
+        # Extract user from kwargs if provided
+        self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         
         # Set customer queryset ordered by customer name
         self.fields['customer_select'].queryset = Contact.objects.all().order_by('customer_name')
         
-        # Set sales queryset ordered by username
-        self.fields['sales'].queryset = User.objects.filter(userprofile__roles__contains='sales').order_by('username')
+        # Configure sales field based on user role
+        if self.user:
+            user_role = self.user.userprofile.get_roles_list()
+            
+            if user_role in ['admin', 'manager']:
+                # Admin/Manager: Can select any sales person
+                self.fields['sales'].queryset = User.objects.filter(userprofile__roles__contains='sales').order_by('username')
+                self.fields['sales'].help_text = "Select sales person from database"
+            else:
+                # Sales user: Only their own name, not changeable
+                self.fields['sales'].queryset = User.objects.filter(userprofile__roles__contains='sales').order_by('username')
+                self.fields['sales'].initial = self.user
+                self.fields['sales'].widget = forms.HiddenInput()  # Use hidden input instead of disabled
+                self.fields['sales'].help_text = f"Assigned to: {self.user.get_full_name() or self.user.username}"
+                # Make it required but with only one option
+                self.fields['sales'].empty_label = None
+        else:
+            # Fallback: All sales users
+            self.fields['sales'].queryset = User.objects.filter(userprofile__roles__contains='sales').order_by('username')
         
         # Explicitly mark date_of_quote as required
         self.fields['date_of_quote'].required = True
@@ -1914,10 +2059,26 @@ class InquiryHandlerForm(forms.ModelForm):
         if not self.instance.pk:
             from datetime import date
             self.fields['date_of_quote'].initial = date.today()
+            
+            # For new inquiries, set sales person based on user role
+            if self.user and self.user.userprofile.get_roles_list() not in ['admin', 'manager']:
+                self.fields['sales'].initial = self.user
         
         # If editing existing inquiry, set the customer_select field
         if self.instance and self.instance.pk and self.instance.company:
             self.fields['customer_select'].initial = self.instance.company
+    
+    def clean_sales(self):
+        """Ensure sales field is properly set"""
+        sales = self.cleaned_data.get('sales')
+        
+        # If user is not admin/manager, ensure they can only assign to themselves
+        if self.user and self.user.userprofile.get_roles_list() not in ['admin', 'manager']:
+            if sales != self.user:
+                # Force assignment to current user for non-admin users
+                sales = self.user
+        
+        return sales
     
     def clean_date_of_quote(self):
         """Validate that date_of_quote is provided"""
@@ -2018,18 +2179,47 @@ def get_inquiry_items_ajax(request):
 
 @login_required
 def inquiry_handler_management_view(request):
-    """Inquiry Handler management page with list of inquiries"""
+    """Inquiry Handler management page with list of inquiries - filtered by user role and assignments"""
     search_query = request.GET.get('search', '')
-    inquiries = InquiryHandler.objects.select_related('company').all()
     
+    # Get user role and permissions
+    user_role = request.user.userprofile.get_roles_list()
+    
+    # Filter inquiries based on user role and permissions
+    if user_role in ['admin', 'manager']:
+        # Admin and Manager can see all inquiries
+        inquiries = InquiryHandler.objects.select_related('company', 'sales').all()
+        total_inquiries = InquiryHandler.objects.count()
+        active_inquiries = InquiryHandler.objects.exclude(status__in=['Lost', 'Project Closed']).count()
+        quotation_stage = InquiryHandler.objects.filter(status='Quotation').count()
+        closed_inquiries = InquiryHandler.objects.filter(status='Project Closed').count()
+    elif request.user.userprofile.can_access_inquiry_handler:
+        # Sales users can only see inquiries assigned to them
+        inquiries = InquiryHandler.objects.select_related('company', 'sales').filter(sales=request.user)
+        total_inquiries = InquiryHandler.objects.filter(sales=request.user).count()
+        active_inquiries = InquiryHandler.objects.filter(sales=request.user).exclude(status__in=['Lost', 'Project Closed']).count()
+        quotation_stage = InquiryHandler.objects.filter(sales=request.user, status='Quotation').count()
+        closed_inquiries = InquiryHandler.objects.filter(sales=request.user, status='Project Closed').count()
+    else:
+        # Users without inquiry handler permission see no inquiries
+        inquiries = InquiryHandler.objects.none()
+        total_inquiries = 0
+        active_inquiries = 0
+        quotation_stage = 0
+        closed_inquiries = 0
+    
+    # Apply search filter
     if search_query:
         inquiries = inquiries.filter(
             Q(create_id__icontains=search_query) |
             Q(opportunity_id__icontains=search_query) |
             Q(quote_no__icontains=search_query) |
-            Q(company__company__icontains=search_query) |
+            Q(company__company_name__icontains=search_query) |
             Q(customer_name__icontains=search_query) |
-            Q(ba__icontains=search_query)
+            Q(ba__icontains=search_query) |
+            Q(sales__first_name__icontains=search_query) |
+            Q(sales__last_name__icontains=search_query) |
+            Q(sales__username__icontains=search_query)
         )
     
     inquiries = inquiries.order_by('-created_at')
@@ -2039,12 +2229,6 @@ def inquiry_handler_management_view(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
-    # Statistics
-    total_inquiries = InquiryHandler.objects.count()
-    active_inquiries = InquiryHandler.objects.exclude(status__in=['Lost', 'Project Closed']).count()
-    quotation_stage = InquiryHandler.objects.filter(status='Quotation').count()
-    closed_inquiries = InquiryHandler.objects.filter(status='Project Closed').count()
-    
     context = {
         'page_obj': page_obj,
         'search_query': search_query,
@@ -2052,6 +2236,9 @@ def inquiry_handler_management_view(request):
         'active_inquiries': active_inquiries,
         'quotation_stage': quotation_stage,
         'closed_inquiries': closed_inquiries,
+        'user_role': user_role,
+        'is_admin': user_role in ['admin', 'manager'],
+        'can_see_all_inquiries': user_role in ['admin', 'manager'],
     }
     
     return render(request, 'dashboard/inquiry_handler_management.html', context)
@@ -2060,7 +2247,7 @@ def inquiry_handler_management_view(request):
 def inquiry_handler_create_view(request):
     """Create new inquiry"""
     if request.method == 'POST':
-        form = InquiryHandlerForm(request.POST)
+        form = InquiryHandlerForm(request.POST, user=request.user)
         
         if form.is_valid():
             inquiry = form.save()
@@ -2092,7 +2279,7 @@ def inquiry_handler_create_view(request):
                 for error in errors:
                     messages.error(request, f'{field}: {error}')
     else:
-        form = InquiryHandlerForm()
+        form = InquiryHandlerForm(user=request.user)
     
     return render(request, 'dashboard/inquiry_handler_form.html', {
         'form': form,
@@ -2102,11 +2289,19 @@ def inquiry_handler_create_view(request):
 
 @login_required
 def inquiry_handler_edit_view(request, inquiry_id):
-    """Edit existing inquiry"""
+    """Edit existing inquiry - with user permission checks"""
     inquiry = get_object_or_404(InquiryHandler, id=inquiry_id)
     
+    # Check if user has permission to edit this inquiry
+    user_role = request.user.userprofile.get_roles_list()
+    if user_role not in ['admin', 'manager']:
+        # Non-admin users can only edit inquiries assigned to them
+        if inquiry.sales != request.user:
+            messages.error(request, 'You can only edit inquiries assigned to you.')
+            return redirect('dashboard:inquiry_handler_management')
+    
     if request.method == 'POST':
-        form = InquiryHandlerForm(request.POST, instance=inquiry)
+        form = InquiryHandlerForm(request.POST, instance=inquiry, user=request.user)
         
         if form.is_valid():
             inquiry = form.save()
@@ -2118,7 +2313,7 @@ def inquiry_handler_edit_view(request, inquiry_id):
                 for error in errors:
                     messages.error(request, f'{field}: {error}')
     else:
-        form = InquiryHandlerForm(instance=inquiry)
+        form = InquiryHandlerForm(instance=inquiry, user=request.user)
     
     return render(request, 'dashboard/inquiry_handler_form.html', {
         'form': form,
@@ -2130,8 +2325,16 @@ def inquiry_handler_edit_view(request, inquiry_id):
 
 @login_required
 def inquiry_handler_delete_view(request, inquiry_id):
-    """Delete inquiry"""
+    """Delete inquiry - with user permission checks"""
     inquiry = get_object_or_404(InquiryHandler, id=inquiry_id)
+    
+    # Check if user has permission to delete this inquiry
+    user_role = request.user.userprofile.get_roles_list()
+    if user_role not in ['admin', 'manager']:
+        # Non-admin users can only delete inquiries assigned to them
+        if inquiry.sales != request.user:
+            messages.error(request, 'You can only delete inquiries assigned to you.')
+            return redirect('dashboard:inquiry_handler_management')
     
     if request.method == 'POST':
         create_id = inquiry.create_id
@@ -2527,6 +2730,65 @@ def get_invoice_details_ajax(request):
 # Quotation Generation Views
 from django.shortcuts import render
 from django.http import HttpResponse
+
+@login_required
+@csrf_exempt
+def fetch_quotation_data_ajax(request):
+    """AJAX endpoint to fetch customer data based on quote number"""
+    if request.method == 'POST':
+        try:
+            import json
+            data = json.loads(request.body)
+            quote_number = data.get('quote_number', '').strip()
+            
+            if not quote_number:
+                return JsonResponse({'success': False, 'error': 'Quote number is required'})
+            
+            # Try to find inquiry with matching create_id
+            try:
+                inquiry = InquiryHandler.objects.select_related('company', 'company__company').get(create_id=quote_number)
+                
+                # Use company address (simplified - only one address field)
+                company_address = ''
+                if inquiry.company.company and inquiry.company.company.address:
+                    company_address = inquiry.company.company.address
+                    address_source = 'company'
+                else:
+                    # Fallback to individual address if no company address available
+                    company_address = inquiry.company.individual_address or ''
+                    address_source = 'individual'
+                
+                # Extract customer data
+                customer_data = {
+                    'to_person': inquiry.company.contact_name,
+                    'firm': inquiry.company.company.company_name if inquiry.company.company else '',
+                    'address': company_address,
+                    'customer_name': inquiry.customer_name,
+                    'email': inquiry.company.email_1 if inquiry.company.email_1 else inquiry.company.email,
+                    'phone': inquiry.company.phone_1,
+                    'status': inquiry.status,
+                    'date_of_quote': inquiry.date_of_quote.strftime('%Y-%m-%d') if inquiry.date_of_quote else '',
+                    'address_source': address_source,
+                }
+                
+                return JsonResponse({
+                    'success': True,
+                    'data': customer_data,
+                    'message': f'Customer data loaded for quote {quote_number} (Address: {customer_data["address_source"]})'
+                })
+                
+            except InquiryHandler.DoesNotExist:
+                return JsonResponse({
+                    'success': False, 
+                    'error': f'No inquiry found with quote number: {quote_number}'
+                })
+                
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'error': 'Invalid JSON data'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': f'Error fetching data: {str(e)}'})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
 from django.conf import settings
 from docx import Document
 from docx.enum.text import WD_COLOR_INDEX
@@ -4231,7 +4493,7 @@ def get_company_names_api(request):
         company_names = []
         
         for company in companies:
-            company_names.append(f"{company.company_name} - {company.city_1}")
+            company_names.append(f"{company.company_name} - {company.city}")
         
         return JsonResponse(company_names, safe=False)
     except Exception as e:

@@ -42,11 +42,8 @@
                     <h6>Company Details:</h6>
                     <ul class="list-unstyled">
                         <li><strong>Company Name:</strong> {{ company_obj.company_name }}</li>
-                        <li><strong>Primary City:</strong> {{ company_obj.city_1 }}</li>
-                        {% if company_obj.city_2 %}
-                        <li><strong>Secondary City:</strong> {{ company_obj.city_2 }}</li>
-                        {% endif %}
-                        <li><strong>Addresses:</strong> {{ company_obj.get_addresses_list|length }} address{{ company_obj.get_addresses_list|length|pluralize:"es" }}</li>
+                        <li><strong>City:</strong> {{ company_obj.city }}</li>
+                        <li><strong>Address:</strong> {{ company_obj.address }}</li>
                         <li><strong>Contacts:</strong> {{ company_obj.contact_set.count }} contact{{ company_obj.contact_set.count|pluralize }}</li>
                         <li><strong>Created:</strong> {{ company_obj.created_at|date:"M d, Y" }}</li>
                     </ul>

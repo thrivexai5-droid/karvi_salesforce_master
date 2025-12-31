@@ -60,19 +60,16 @@ class UserProfile(models.Model):
 
 
 class Company(models.Model):
-    """Company model with structured locations and addresses"""
+    """Company model with single location and address"""
     
     # Company Name - Required and unique per city combination
     company_name = models.CharField(max_length=200, verbose_name="Company Name")
     
-    # Company Locations (Cities) - Exactly two cities
-    city_1 = models.CharField(max_length=100, verbose_name="Primary City")
-    city_2 = models.CharField(max_length=100, verbose_name="Secondary City", blank=True, null=True)
+    # Company Location (City) - Single city only
+    city = models.CharField(max_length=100, verbose_name="City")
     
-    # Company Addresses - Exactly three addresses
-    address_1 = models.TextField(verbose_name="Primary Address")
-    address_2 = models.TextField(verbose_name="Secondary Address", blank=True, null=True)
-    address_3 = models.TextField(verbose_name="Tertiary Address", blank=True, null=True)
+    # Company Address - Single address only
+    address = models.TextField(verbose_name="Company Address")
     
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
@@ -80,33 +77,25 @@ class Company(models.Model):
     
     def get_cities_display(self):
         """Return formatted cities display"""
-        cities = [self.city_1]
-        if self.city_2:
-            cities.append(self.city_2)
-        return ", ".join(cities)
+        return self.city
     
     def get_primary_city(self):
         """Return primary city for dropdown display"""
-        return self.city_1
+        return self.city
     
     def get_addresses_list(self):
-        """Return list of non-empty addresses"""
-        addresses = [self.address_1]
-        if self.address_2:
-            addresses.append(self.address_2)
-        if self.address_3:
-            addresses.append(self.address_3)
-        return addresses
+        """Return list of addresses"""
+        return [self.address] if self.address else []
     
     def __str__(self):
-        return f"{self.company_name} – {self.city_1}"
+        return f"{self.company_name} – {self.city}"
     
     class Meta:
         verbose_name = "Company"
         verbose_name_plural = "Companies"
-        ordering = ['company_name', 'city_1']
-        # Ensure company name is unique per primary city
-        unique_together = ['company_name', 'city_1']
+        ordering = ['company_name', 'city']
+        # Ensure company name is unique per city
+        unique_together = ['company_name', 'city']
 
 
 class Contact(models.Model):
@@ -614,10 +603,10 @@ class InquiryHandler(models.Model):
     # Status choices as per your requirements
     STATUS_CHOICES = [
         # Early Stage (prefix: e) - Reordered sequence
-        ('Enquiry', 'Enquiry'),
+        ('Inquiry', 'Inquiry'),
         ('Inputs', 'Inputs'),
         ('Inspection', 'Inspection'),
-        ('Enquiry Hold', 'Enquiry Hold'),
+        ('Inquiry Hold', 'Inquiry Hold'),
         ('Pending', 'Pending'),
         ('Quotation', 'Quotation'),
         ('Negotiation', 'Negotiation'),
@@ -828,7 +817,7 @@ class InquiryHandler(models.Model):
             
             
             # Order Stage (prefix: o)
-            'Enquiry Hold': 'o',
+            'Inquiry Hold': 'o',
             'PO-Confirm': 'o',
             'Design Review': 'o',
             'Manufacturing': 'o',
@@ -836,7 +825,7 @@ class InquiryHandler(models.Model):
             'Inputs': 'e',
             'Pending': 'e',
             'Inspection': 'e',
-            'Enquiry': 'e',
+            'Inquiry': 'e',
             'Quotation': 'e',
             'Negotiation': 'e',
             
@@ -866,13 +855,13 @@ class InquiryHandler(models.Model):
     def get_status_class(self):
         """Get CSS class for status display"""
         status_classes = {
-            'Enquiry': 'primary',
+            'Inquiry': 'primary',
             'Pending': 'warning',
             'Inspection': 'info',
             'Inputs': 'secondary',
             'Quotation': 'success',
             'Negotiation': 'warning',
-            'Enquiry Hold': 'warning',
+            'Inquiry Hold': 'warning',
             'PO-Confirm': 'success',
             'Design Review': 'info',
             'Manufacturing': 'primary',

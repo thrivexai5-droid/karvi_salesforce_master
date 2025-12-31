@@ -48,9 +48,13 @@
                     <div class="form-group">
                         <label for="quote_no">
                             <i class="bi bi-hash"></i> Quote Number
+                            <span class="text-muted small">(Auto-fetch enabled)</span>
                         </label>
                         <input type="text" id="quote_no" name="quote_no" class="form-control" value="KEC005JN2025" required>
-                        <small class="form-text"><i class="bi bi-info-circle"></i> Unique quotation identifier</small>
+                        <small class="form-text">
+                            <i class="bi bi-info-circle"></i> 
+                            Enter quote number to auto-fetch customer data from inquiries
+                        </small>
                     </div>
                     
                     <div class="form-group">
@@ -439,6 +443,141 @@ function validateForGeneration() {
     
     return true; // All validations passed
 }
+
+// Auto-fetch customer data when quote number changes
+document.addEventListener('DOMContentLoaded', function() {
+    const quoteNoField = document.getElementById('quote_no');
+    const toPersonField = document.getElementById('to_person');
+    const firmField = document.getElementById('firm');
+    const addressField = document.getElementById('address');
+    
+    // Add loading indicator
+    function showLoading(show) {
+        const loadingIndicator = document.getElementById('quote-loading') || createLoadingIndicator();
+        loadingIndicator.style.display = show ? 'inline-block' : 'none';
+    }
+    
+    function createLoadingIndicator() {
+        const loading = document.createElement('span');
+        loading.id = 'quote-loading';
+        loading.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Fetching...';
+        loading.style.marginLeft = '10px';
+        loading.style.color = '#007bff';
+        loading.style.display = 'none';
+        quoteNoField.parentNode.appendChild(loading);
+        return loading;
+    }
+    
+    // Add CSS for spinning animation
+    const style = document.createElement('style');
+    style.textContent = `
+        .spin {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    `;
+    document.head.appendChild(style);
+    
+    // Debounce function to avoid too many API calls
+    let debounceTimer;
+    function debounce(func, delay) {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(func, delay);
+    }
+    
+    // Fetch customer data function
+    function fetchCustomerData(quoteNumber) {
+        if (!quoteNumber.trim()) {
+            return;
+        }
+        
+        showLoading(true);
+        
+        fetch('{% url "dashboard:fetch_quotation_data_ajax" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                quote_number: quoteNumber
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            showLoading(false);
+            
+            if (data.success) {
+                // Auto-populate fields
+                toPersonField.value = data.data.to_person || '';
+                firmField.value = data.data.firm || '';
+                addressField.value = data.data.address || '';
+                
+                // Show success message
+                showMessage('success', data.message || 'Customer data loaded successfully');
+                
+                // Add visual feedback
+                [toPersonField, firmField, addressField].forEach(field => {
+                    field.style.backgroundColor = '#d4edda';
+                    setTimeout(() => {
+                        field.style.backgroundColor = '';
+                    }, 2000);
+                });
+            } else {
+                // Show error message
+                showMessage('error', data.error || 'Failed to fetch customer data');
+            }
+        })
+        .catch(error => {
+            showLoading(false);
+            console.error('Error fetching customer data:', error);
+            showMessage('error', 'Network error while fetching customer data');
+        });
+    }
+    
+    // Show message function
+    function showMessage(type, message) {
+        // Remove existing messages
+        const existingMessages = document.querySelectorAll('.auto-fetch-message');
+        existingMessages.forEach(msg => msg.remove());
+        
+        // Create new message
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `alert auto-fetch-message ${type === 'success' ? 'alert-success' : 'alert-danger'}`;
+        messageDiv.innerHTML = `
+            <i class="bi bi-${type === 'success' ? 'check-circle' : 'exclamation-triangle'}"></i>
+            ${message}
+        `;
+        messageDiv.style.marginTop = '10px';
+        
+        // Insert after quote number field
+        quoteNoField.parentNode.insertBefore(messageDiv, quoteNoField.nextSibling);
+        
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            messageDiv.remove();
+        }, 5000);
+    }
+    
+    // Add event listener to quote number field
+    quoteNoField.addEventListener('input', function() {
+        const quoteNumber = this.value.trim();
+        if (quoteNumber.length >= 3) { // Only fetch if at least 3 characters
+            debounce(() => fetchCustomerData(quoteNumber), 500); // 500ms delay
+        }
+    });
+    
+    // Add blur event for immediate fetch when user leaves the field
+    quoteNoField.addEventListener('blur', function() {
+        const quoteNumber = this.value.trim();
+        if (quoteNumber.length >= 3) {
+            fetchCustomerData(quoteNumber);
+        }
+    });
+});
 </script>
 
 <style>

@@ -1,0 +1,144 @@
+<!-- Admin/Manager Dashboard - Full Access -->
+<div class="dashboard-layout">
+    <!-- Chart 1 - Top Left -->
+    <div class="card stats-card small-card shadow-sm border-0">
+        <h6 class="chart-title">Operations</h6>
+        <div class="chart-wrapper">
+            <div id="apexChart1"></div>
+        </div>
+    </div>
+
+    <!-- Chart 2 - Top Center -->
+    <div class="card stats-card small-card shadow-sm border-0">
+        <h6 class="chart-title">Sales</h6>
+        <div class="chart-wrapper">
+            <div id="apexChart2"></div>
+        </div>
+    </div>
+
+    <!-- Value Cards - Top Right (Four cards in a row) -->
+    <div class="value-cards-container">
+        <!-- Max Date Card -->
+        <div class="card stats-card small-card shadow-sm border-0">
+            <div class="card-body text-center d-flex flex-column justify-content-center">
+                <div class="card-icon mx-auto mb-2">
+                    <i class="bi bi-calendar-check"></i>
+                </div>
+                <div class="card-content">
+                    <h6 class="card-subtitle text-muted text-uppercase small fw-bold mb-1">Payment Due (MAX)</h6>
+                    <h3 class="card-value fw-bold mb-1">{{ max_date }}</h3>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sustainance Date Card -->
+        <div class="card stats-card small-card shadow-sm border-0">
+            <div class="card-body text-center d-flex flex-column justify-content-center">
+                <div class="card-icon mx-auto mb-2">
+                    <i class="bi bi-calendar-event"></i>
+                </div>
+                <div class="card-content">
+                    <h6 class="card-subtitle text-muted text-uppercase small fw-bold mb-1">Sustainance</h6>
+                    <h3 class="card-value fw-bold mb-1">{{ sustainance_date }}</h3>
+                    <small class="text-muted">{{ sustainability_days }} days</small>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Total Value Card -->
+        <div class="card stats-card small-card shadow-sm border-0">
+            <div class="card-body text-center d-flex flex-column justify-content-center">
+                <div class="card-icon mx-auto mb-2">
+                    <i class="bi bi-currency-rupee"></i>
+                </div>
+                <div class="card-content">
+                    <h6 class="card-subtitle text-muted text-uppercase small fw-bold mb-1">Total Value</h6>
+                    <h3 class="card-value fw-bold mb-1">{{ total_value }}</h3>
+                </div>
+            </div>
+        </div>
+        
+        <!-- GST Value Card -->
+        <div class="card stats-card small-card shadow-sm border-0">
+            <div class="card-body text-center d-flex flex-column justify-content-center">
+                <div class="card-icon mx-auto mb-2">
+                    <i class="bi bi-graph-up"></i>
+                </div>
+                <div class="card-content">
+                    <h6 class="card-subtitle text-muted text-uppercase small fw-bold mb-1">GST Value</h6>
+                    <h3 class="card-value fw-bold mb-1">{{ gst_value }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart 3 - Bottom Left (Expanded) -->
+    <div class="chart-container card stats-card shadow-sm border-0">
+        <h6 class="chart-title">Leads chart</h6>
+        <div class="chart-wrapper">
+            <div id="apexChart3"></div>
+        </div>
+    </div>
+
+    <!-- Large Card - Bottom Right -->
+    <div class="card stats-card large-card shadow-sm border-0">
+        <div class="card-body">
+            <h6 class="card-title fw-bold mb-4">Financial Sustainability</h6>
+            <div class="stats-grid">
+                <div class="activity-item mb-3 pb-3 border-bottom">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>Net Revenue</strong>
+                            <small class="d-block text-muted">Total Invoice - Fixed Costs + Additional</small>
+                        </div>
+                        <div class="text-end">
+                            <div class="fw-bold {% if net_revenue_sign == 'negative' %}text-danger{% else %}text-success{% endif %}">
+                                {% if net_revenue_sign == 'negative' %}-{% endif %}₹{{ net_revenue }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="activity-item mb-3 pb-3 border-bottom">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>Monthly Expenses</strong>
+                            <small class="d-block text-muted">₹{{ daily_burn }}/day burn rate</small>
+                        </div>
+                        <div class="text-end">
+                            <div class="fw-bold">₹{{ monthly_expenses }}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="activity-item mb-3 pb-3 border-bottom">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>Sustainability Period</strong>
+                            <small class="d-block text-muted">Days business can sustain ({{ sustainability_status }})</small>
+                        </div>
+                        <div class="text-end">
+                            <div class="fw-bold text-{{ sustainability_color }}">
+                                {% if sustainability_days > 0 %}{{ sustainability_days }} days{% else %}Critical{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="activity-item">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>Target Date</strong>
+                            <small class="d-block text-muted">{% if sustainability_days > 0 %}Sustainability end date{% else %}Immediate action required{% endif %}</small>
+                        </div>
+                        <div class="text-end">
+                            <div class="fw-bold text-{{ sustainability_color }}">
+                                {% if sustainability_days > 0 %}{{ sustainance_date }}{% else %}Today{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Include the full dashboard scripts -->
+{% include 'dashboard/partials/admin_dashboard_scripts.html' %}

@@ -192,7 +192,7 @@
                             {% if view_type == 'companies' %}
                                 <th>Company Name</th>
                                 <th>City</th>
-                                <th>Created</th>
+                                <!-- <th>Created</th> -->
                                 <th>Actions</th>
                             {% else %}
                                 <th>Contact Name</th>
@@ -218,7 +218,7 @@
                                         <div class="fw-semibold">{{ item.company_name }}</div>
                                     </td>
                                     <td>
-                                        <span class="badge bg-primary">{{ item.city_1 }}</span>
+                                        <span class="badge bg-primary">{{ item.city }}</span>
                                     </td>
                                     <!-- <td>
                                         <span class="text-muted">{{ item.created_at|date:"M d, Y" }}</span>
