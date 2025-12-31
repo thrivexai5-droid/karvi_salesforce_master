@@ -1,4 +1,5 @@
 {% extends 'dashboard/base.html' %}
+{% load static %}
 
 {% block body_class %}scrollable-page{% endblock %}
 
@@ -75,7 +76,7 @@
                     <i class="bi bi-plus-circle-fill me-2"></i>
                     Additional Supply Management
                 </h2>
-                <p class="page-subtitle">Manage additional supplies for invoices</p>
+                 
             </div>
             <div class="header-actions">
                 <a href="{% url 'dashboard:additional_supply_create' %}" class="btn btn-primary add-supply-btn">
@@ -120,7 +121,12 @@
         <div class="search-section">
             <form method="get" class="search-form">
                 <div class="search-input-group">
-                    <input type="text" name="search" value="{{ search_query }}" placeholder="Search by invoice number, company, customer, description..." class="search-input">
+                    <i class="bi bi-search"></i>
+                    <input type="text" 
+                           name="search" 
+                           value="{{ search_query }}" 
+                           placeholder="Search by invoice number, company, customer, description..." 
+                           class="form-control">
                     <button type="submit" class="search-btn">
                         <i class="bi bi-search"></i>
                     </button>
@@ -274,4 +280,7 @@
         {% endif %}
     </div>
 </div>
+
+
+
 {% endblock %}

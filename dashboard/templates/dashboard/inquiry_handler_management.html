@@ -1,6 +1,10 @@
 {% extends 'dashboard/base.html' %}
+{% load static %}
 
 {% block body_class %}scrollable-page inquiry-handler-page{% endblock %}
+
+{% block extra_css %}
+{% endblock %}
 
 {% block content %}
 <div class="user-management-container">
@@ -8,10 +12,10 @@
     <div class="page-header">
         <div>
             <h2 class="page-title">Inquiry Handler</h2>
-            <p class="page-subtitle">Manage inquiries and track opportunity progress</p>
+       
         </div>
         <a href="{% url 'dashboard:inquiry_handler_create' %}" class="btn btn-primary">
-            <i class="bi bi-plus-circle me-2"></i>Create New Inquiry
+            <i class="bi bi-plus-circle me-2"></i>Create Inquiry
         </a>
     </div>
 
@@ -60,7 +64,11 @@
         <div class="d-flex gap-3 align-items-center">
             <form method="GET" class="search-input-group flex-grow-1">
                 <i class="bi bi-search"></i>
-                <input type="text" name="search" class="form-control" placeholder="Search by Quote No, Company, Customer, or Sales..." value="{{ search_query }}">
+                <input type="text" 
+                       name="search" 
+                       class="form-control" 
+                       placeholder="Search by Quote No, Company, Customer, or Sales..." 
+                       value="{{ search_query }}">
                 <button type="submit" class="btn btn-outline-primary">Search</button>
                 {% if search_query %}
                     <a href="{% url 'dashboard:inquiry_handler_management' %}" class="btn btn-outline-secondary">Clear</a>
@@ -189,4 +197,7 @@
         {% endif %}
     </div>
 </div>
+
+
+
 {% endblock %}

@@ -634,7 +634,7 @@ body.dashboard-page:has(.dashboard-container-new) {
 }
 
 .page-title {
-    font-size: 1.5rem;
+    font-size: 1.275rem;
     font-weight: 700;
     color: #111827;
     margin: 0;
@@ -1466,7 +1466,7 @@ body.dashboard-page:has(.dashboard-container-new) {
 }
 /* User Management Page Styles */
 .user-management-container {
-    padding: 2rem;
+    padding: 0.5rem;
     max-width: 1400px;
     margin: 0 auto;
 }
@@ -1475,13 +1475,13 @@ body.dashboard-page:has(.dashboard-container-new) {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 2rem;
+    margin-bottom: 0.5rem;
     padding-bottom: 1rem;
     border-bottom: 1px solid #e5e7eb;
 }
 
 .page-title {
-    font-size: 1.75rem;
+    font-size: 1.275rem;
     font-weight: 700;
     color: #1f2937;
     margin: 0;
@@ -1503,7 +1503,7 @@ body.dashboard-page:has(.dashboard-container-new) {
 .stat-card {
     background: white;
     border-radius: 1rem;
-    padding: 1.5rem;
+    padding: 0.5rem;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     border: 1px solid #e5e7eb;
     display: flex;
@@ -1512,8 +1512,8 @@ body.dashboard-page:has(.dashboard-container-new) {
 }
 
 .stat-icon {
-    width: 3rem;
-    height: 3rem;
+    width: 2.5rem;
+    height:2.5rem;
     border-radius: 0.75rem;
     display: flex;
     align-items: center;
@@ -1523,7 +1523,7 @@ body.dashboard-page:has(.dashboard-container-new) {
 }
 
 .stat-content h3 {
-    font-size: 1.5rem;
+    font-size: 1rem;
     font-weight: 700;
     margin: 0;
     color: #1f2937;
@@ -1538,7 +1538,7 @@ body.dashboard-page:has(.dashboard-container-new) {
 .search-section {
     background: white;
     border-radius: 1rem;
-    padding: 1.5rem;
+   
     margin-bottom: 2rem;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     border: 1px solid #e5e7eb;

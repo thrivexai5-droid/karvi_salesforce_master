@@ -1,0 +1,123 @@
+/**
+ * Professional Autocomplete Dropdown Styles
+ * Floating dropdown with proper positioning and hover effects
+ */
+
+.autocomplete-dropdown {
+    position: absolute;
+    background: #ffffff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    max-height: 220px;
+    overflow: hidden;
+    font-size: 14px;
+}
+
+.autocomplete-loading {
+    padding: 12px 16px;
+    text-align: center;
+    color: #6c757d;
+    font-size: 13px;
+}
+
+.autocomplete-loading i {
+    margin-right: 6px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.autocomplete-results {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 220px;
+    overflow-y: auto;
+}
+
+.autocomplete-item {
+    padding: 10px 16px;
+    cursor: pointer;
+    border-bottom: 1px solid #f1f1f1;
+    transition: background-color 0.15s ease;
+    color: #333;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.autocomplete-item:last-child {
+    border-bottom: none;
+}
+
+.autocomplete-item:hover {
+    background-color: #f5f5f5;
+}
+
+.autocomplete-item:active {
+    background-color: #e9ecef;
+}
+
+.autocomplete-no-results {
+    padding: 12px 16px;
+    color: #6c757d;
+    font-style: italic;
+    text-align: center;
+    font-size: 13px;
+}
+
+/* Scrollbar styling for results */
+.autocomplete-results::-webkit-scrollbar {
+    width: 6px;
+}
+
+.autocomplete-results::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.autocomplete-results::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.autocomplete-results::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .autocomplete-dropdown {
+        font-size: 13px;
+    }
+    
+    .autocomplete-item {
+        padding: 8px 12px;
+    }
+    
+    .autocomplete-loading {
+        padding: 10px 12px;
+    }
+}
+
+/* Focus state for accessibility */
+.autocomplete-item:focus {
+    outline: 2px solid #007bff;
+    outline-offset: -2px;
+    background-color: #f5f5f5;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .autocomplete-dropdown {
+        border: 2px solid #000;
+    }
+    
+    .autocomplete-item:hover {
+        background-color: #000;
+        color: #fff;
+    }
+}

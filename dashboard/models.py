@@ -13,6 +13,7 @@ class UserProfile(models.Model):
     
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     roles = models.TextField(default='sales', help_text="Comma-separated list of roles")
+    phone_number = models.CharField(max_length=20, blank=True, null=True, verbose_name="Phone Number")
     
     # Form Permissions
     can_access_invoice_generation = models.BooleanField(default=False, verbose_name="Invoice Generation")

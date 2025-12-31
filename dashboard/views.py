@@ -240,6 +240,11 @@ class UserManagementForm(forms.Form):
         required=True,
         widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Enter email address'})
     )
+    phone_number = forms.CharField(
+        max_length=20,
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter phone number'})
+    )
     password = forms.CharField(
         min_length=8,
         required=True,
@@ -307,6 +312,11 @@ class UserEditForm(forms.Form):
     email = forms.EmailField(
         required=True,
         widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Enter email address'})
+    )
+    phone_number = forms.CharField(
+        max_length=20,
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter phone number'})
     )
     password = forms.CharField(
         min_length=8,
@@ -572,11 +582,13 @@ def user_create_view(request):
                 # Create UserProfile with multiple form permissions
                 selected_permissions = form.cleaned_data.get('form_permissions', [])
                 selected_role = form.cleaned_data['role']
+                phone_number = form.cleaned_data.get('phone_number', '')
                 
                 profile, created = UserProfile.objects.get_or_create(
                     user=user,
                     defaults={
                         'roles': selected_role,
+                        'phone_number': phone_number,
                         'can_access_invoice_generation': 'invoice_generation' in selected_permissions,
                         'can_access_inquiry_handler': 'inquiry_handler' in selected_permissions,
                         'can_access_quotation_generation': 'quotation_generation' in selected_permissions,
@@ -627,7 +639,9 @@ def user_edit_view(request, user_id):
             # Update UserProfile with single role and multiple form permissions
             selected_role = form.cleaned_data['role']
             selected_permissions = form.cleaned_data['form_permissions']
+            phone_number = form.cleaned_data.get('phone_number', '')
             profile.roles = selected_role
+            profile.phone_number = phone_number
             profile.can_access_invoice_generation = 'invoice_generation' in selected_permissions
             profile.can_access_inquiry_handler = 'inquiry_handler' in selected_permissions
             profile.can_access_quotation_generation = 'quotation_generation' in selected_permissions
@@ -651,6 +665,7 @@ def user_edit_view(request, user_id):
         initial_data = {
             'name': f"{user.first_name} {user.last_name}".strip(),
             'email': user.email,
+            'phone_number': profile.phone_number or '',
             'role': profile.get_roles_list(),
             'form_permissions': selected_permissions,
         }
@@ -4162,4 +4177,225 @@ def process_po_pdf_ajax(request):
     return JsonResponse({
         'success': False,
         'error': 'No PDF file uploaded.'
+    })
+
+# Demo and API Views for Searchable Input Component
+
+@login_required
+def searchable_input_demo_view(request):
+    """Demo page for searchable input component"""
+    return render(request, 'dashboard/searchable_input_demo.html', {
+        'title': 'Searchable Input Demo'
+    })
+
+def get_user_names_api(request):
+    """API endpoint to get user names for searchable input"""
+    try:
+        # Get all user names (first name + last name or username)
+        users = User.objects.all()
+        user_names = []
+        
+        for user in users:
+            full_name = user.get_full_name()
+            if full_name.strip():
+                user_names.append(full_name)
+            else:
+                user_names.append(user.username)
+        
+        return JsonResponse(user_names, safe=False)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+def get_contact_names_api(request):
+    """API endpoint to get contact names for searchable input"""
+    try:
+        # Get all contact names from the Contact model
+        contacts = Contact.objects.all().values_list('contact_name', flat=True)
+        contact_names = list(contacts)
+        
+        return JsonResponse(contact_names, safe=False)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@login_required
+def searchable_integration_demo_view(request):
+    """Integration demo page for searchable input component"""
+    return render(request, 'dashboard/searchable_integration_example.html', {
+        'title': 'Searchable Input Integration Demo'
+    })
+def get_company_names_api(request):
+    """API endpoint to get company names for searchable input"""
+    try:
+        # Get all company names from the Company model
+        companies = Company.objects.all()
+        company_names = []
+        
+        for company in companies:
+            company_names.append(f"{company.company_name} - {company.city_1}")
+        
+        return JsonResponse(company_names, safe=False)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+def get_inquiry_search_data_api(request):
+    """API endpoint to get inquiry search data for searchable input"""
+    try:
+        # Get inquiry data for search
+        inquiries = InquiryHandler.objects.all()
+        search_data = []
+        
+        for inquiry in inquiries:
+            # Add quote number
+            if inquiry.quote_no:
+                search_data.append(inquiry.quote_no)
+            
+            # Add company name
+            if inquiry.company and inquiry.company.contact_name:
+                search_data.append(inquiry.company.contact_name)
+            
+            # Add customer name
+            if inquiry.customer_name:
+                search_data.append(inquiry.customer_name)
+            
+            # Add sales person name
+            if inquiry.sales:
+                search_data.append(inquiry.sales.get_full_name() or inquiry.sales.username)
+        
+        # Remove duplicates and return
+        unique_data = list(set(search_data))
+        return JsonResponse(unique_data, safe=False)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+def get_quotation_search_data_api(request):
+    """API endpoint to get quotation search data for searchable input"""
+    try:
+        # Get quotation data for search
+        quotations = Quotation.objects.all()
+        search_data = []
+        
+        for quotation in quotations:
+            # Add quote number
+            if quotation.quote_number:
+                search_data.append(quotation.quote_number)
+            
+            # Add firm name
+            if quotation.firm:
+                search_data.append(quotation.firm)
+            
+            # Add to person
+            if quotation.to_person:
+                search_data.append(quotation.to_person)
+        
+        # Remove duplicates and return
+        unique_data = list(set(search_data))
+        return JsonResponse(unique_data, safe=False)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+def get_purchase_order_search_data_api(request):
+    """API endpoint to get purchase order search data for searchable input"""
+    try:
+        # Get purchase order data for search
+        orders = PurchaseOrder.objects.all()
+        search_data = []
+        
+        for order in orders:
+            # Add PO number
+            if order.po_number:
+                search_data.append(order.po_number)
+            
+            # Add customer name
+            if order.customer_name:
+                search_data.append(order.customer_name)
+            
+            # Add company name
+            if order.company and order.company.contact_name:
+                search_data.append(order.company.contact_name)
+            
+            # Add sales person
+            if order.sales_person:
+                search_data.append(order.sales_person.get_full_name() or order.sales_person.username)
+            
+            # Add project manager
+            if order.project_manager:
+                search_data.append(order.project_manager.get_full_name() or order.project_manager.username)
+        
+        # Remove duplicates and return
+        unique_data = list(set(search_data))
+        return JsonResponse(unique_data, safe=False)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+def get_invoice_search_data_api(request):
+    """API endpoint to get invoice search data for searchable input"""
+    try:
+        # Get invoice data for search
+        invoices = Invoice.objects.all()
+        search_data = []
+        
+        for invoice in invoices:
+            # Add invoice number
+            if invoice.invoice_number:
+                search_data.append(invoice.invoice_number)
+            
+            # Add customer name
+            if invoice.customer_name:
+                search_data.append(invoice.customer_name)
+            
+            # Add company name
+            if invoice.company and invoice.company.contact_name:
+                search_data.append(invoice.company.contact_name)
+        
+        # Remove duplicates and return
+        unique_data = list(set(search_data))
+        return JsonResponse(unique_data, safe=False)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+def get_additional_supply_search_data_api(request):
+    """API endpoint to get additional supply search data for searchable input"""
+    try:
+        # Get additional supply data for search
+        supplies = AdditionalSupply.objects.all()
+        search_data = []
+        
+        for supply in supplies:
+            # Add invoice number
+            if supply.invoice and supply.invoice.invoice_number:
+                search_data.append(supply.invoice.invoice_number)
+            
+            # Add customer name
+            if supply.invoice and supply.invoice.customer_name:
+                search_data.append(supply.invoice.customer_name)
+            
+            # Add company name
+            if supply.invoice and supply.invoice.company and supply.invoice.company.contact_name:
+                search_data.append(supply.invoice.company.contact_name)
+            
+            # Add description
+            if supply.description:
+                search_data.append(supply.description)
+        
+        # Remove duplicates and return
+        unique_data = list(set(search_data))
+        return JsonResponse(unique_data, safe=False)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+@login_required
+def search_fix_demo_view(request):
+    """Demo page showing the search filter UI fix"""
+    return render(request, 'dashboard/search_fix_demo.html', {
+        'title': 'Search Filter UI Fix Demo'
+    })
+@login_required
+def search_test_demo_view(request):
+    """Test page for the fixed search dropdown"""
+    return render(request, 'dashboard/search_test.html', {
+        'title': 'Search Dropdown Test - Fixed Version'
+    })
+@login_required
+def simple_search_test_view(request):
+    """Simple search test page with working dropdown fix"""
+    return render(request, 'dashboard/simple_search_test.html', {
+        'title': 'Simple Search Test - Working Fix'
     })

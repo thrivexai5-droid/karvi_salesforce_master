@@ -155,7 +155,7 @@
 /* Main content adjustment - remove sidebar space */
 .main-content-no-sidebar {
     flex: 1;
-    padding: 1.5rem;
+    padding: 0.5rem;
     background: #f8fafc;
     overflow-y: auto;
     height: calc(100vh - 80px);

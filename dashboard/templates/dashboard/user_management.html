@@ -1,35 +1,42 @@
 {% extends 'dashboard/base.html' %}
+{% load static %}
 
 {% block body_class %}scrollable-page{% endblock %}
 
 {% block extra_css %}
 <style>
-/* Add User Button - Icon and Text Alignment */
+/* Add User Button - Compact size with single line text */
 .add-user-btn {
     display: inline-flex !important;
     align-items: center !important;
-    gap: 0.5rem !important;
-    padding: 0.75rem 1.25rem !important;
-    font-weight: 600 !important;
-    border-radius: 0.5rem !important;
+    gap: 0.25rem !important;
+    padding: 0.375rem 0.625rem !important;
+    font-weight: 500 !important;
+    border-radius: 0.25rem !important;
     transition: all 0.2s ease !important;
+    font-size: 0.8125rem !important;
+    line-height: 1.2 !important;
+    white-space: nowrap !important;
+    min-width: auto !important;
 }
 
 .add-user-btn i {
-    font-size: 1rem !important;
+    font-size: 0.75rem !important;
     line-height: 1 !important;
     margin: 0 !important;
+    flex-shrink: 0 !important;
 }
 
 .add-user-btn span {
-    font-size: 0.875rem !important;
+    font-size: 0.8125rem !important;
     line-height: 1 !important;
     margin: 0 !important;
+    white-space: nowrap !important;
 }
 
 .add-user-btn:hover {
     transform: translateY(-1px) !important;
-    box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3) !important;
+    box-shadow: 0 2px 4px rgba(0, 123, 255, 0.2) !important;
 }
 
 /* Header Actions Alignment */
@@ -45,7 +52,7 @@
     justify-content: space-between !important;
     align-items: center !important;
     margin-bottom: 2rem !important;
-    padding-bottom: 1rem !important;
+    padding-bottom: 0.5rem !important;
     border-bottom: 1px solid #e9ecef !important;
 }
 
@@ -72,14 +79,13 @@
         <div class="page-header">
             <div class="header-content">
                 <h2 class="page-title">
-                    <i class="bi bi-people-fill me-2"></i>
                     User Management
                 </h2>
             </div>
             <div class="header-actions">
                 <a href="{% url 'dashboard:user_create' %}" class="btn btn-primary add-user-btn">
-                    <i class="bi bi-person-plus"></i>
-                    <span>Add User</span>
+                   
+                    <span>Add_User</span>
                 </a>
             </div>
         </div>
@@ -129,8 +135,11 @@
             <form method="GET" class="search-form">
                 <div class="search-input-group">
                     <i class="bi bi-search"></i>
-                    <input type="text" name="search" value="{{ search_query }}" 
-                           placeholder="Search users by name, username, or email..." class="form-control">
+                    <input type="text" 
+                           name="search" 
+                           value="{{ search_query }}" 
+                           placeholder="Search users by name, username, or email..." 
+                           class="form-control">
                     <button type="submit" class="btn btn-outline-primary">Search</button>
                     {% if search_query %}
                         <a href="{% url 'dashboard:user_management' %}" class="btn btn-outline-secondary">Clear</a>
@@ -154,6 +163,7 @@
                                 <th>No</th>
                                 <th>Name</th>
                                 <th>Email</th>
+                                <th>Phone</th>
                                 <th>Role</th>
                                 <th>Permissions</th>
                                 <th>Status</th>
@@ -177,6 +187,13 @@
                                     </td>
                                     <td>{{ user.email|default:"No email" }}</td>
                                     <td>
+                                        {% if user.userprofile and user.userprofile.phone_number %}
+                                            {{ user.userprofile.phone_number }}
+                                        {% else %}
+                                            <span class="text-muted">No phone</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
                                         {% if user.userprofile %}
                                             <span class="text-muted">{{ user.userprofile.get_roles_display }}</span>
                                         {% else %}
@@ -185,25 +202,13 @@
                                     </td>
                                     <td>
                                         {% if user.userprofile %}
-                                            <div class="permissions-badges">
-                                                {% if user.userprofile.can_access_invoice_generation %}
-                                                    <span class="badge bg-success badge-sm me-1 mb-1">Invoice Generation</span>
-                                                {% endif %}
-                                                {% if user.userprofile.can_access_inquiry_handler %}
-                                                    <span class="badge bg-primary badge-sm me-1 mb-1">Inquiry Handler</span>
-                                                {% endif %}
-                                                {% if user.userprofile.can_access_quotation_generation %}
-                                                    <span class="badge bg-warning badge-sm me-1 mb-1">Quotation Generation</span>
-                                                {% endif %}
-                                                {% if user.userprofile.can_access_additional_supply %}
-                                                    <span class="badge bg-info badge-sm me-1 mb-1">Additional Supply</span>
-                                                {% endif %}
-                                                {% if not user.userprofile.can_access_invoice_generation and not user.userprofile.can_access_inquiry_handler and not user.userprofile.can_access_quotation_generation and not user.userprofile.can_access_additional_supply %}
-                                                    <span class="badge bg-secondary">No Access</span>
-                                                {% endif %}
-                                            </div>
+                                            {% if user.userprofile.can_access_invoice_generation or user.userprofile.can_access_inquiry_handler or user.userprofile.can_access_quotation_generation or user.userprofile.can_access_additional_supply %}
+                                                {% if user.userprofile.can_access_invoice_generation %}Invoice Generation{% endif %}{% if user.userprofile.can_access_inquiry_handler %}{% if user.userprofile.can_access_invoice_generation %}, {% endif %}Inquiry Handler{% endif %}{% if user.userprofile.can_access_quotation_generation %}{% if user.userprofile.can_access_invoice_generation or user.userprofile.can_access_inquiry_handler %}, {% endif %}Quotation Generation{% endif %}{% if user.userprofile.can_access_additional_supply %}{% if user.userprofile.can_access_invoice_generation or user.userprofile.can_access_inquiry_handler or user.userprofile.can_access_quotation_generation %}, {% endif %}Additional Supply{% endif %}
+                                            {% else %}
+                                                No Access
+                                            {% endif %}
                                         {% else %}
-                                            <span class="badge bg-secondary">No Access</span>
+                                            No Access
                                         {% endif %}
                                     </td>
                                     <td>

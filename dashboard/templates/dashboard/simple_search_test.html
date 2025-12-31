@@ -1,0 +1,231 @@
+{% extends 'dashboard/base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+body {
+    padding: 20px;
+    font-family: Arial, sans-serif;
+}
+
+.test-container {
+    max-width: 800px;
+    margin: 0 auto;
+    background: white;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.search-section {
+    margin-bottom: 30px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.search-input-group {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.search-input-group input {
+    flex: 1;
+    padding: 12px 15px 12px 40px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: border-color 0.3s;
+}
+
+.search-input-group input:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+}
+
+.search-input-group i {
+    position: absolute;
+    left: 15px;
+    color: #666;
+    z-index: 1;
+}
+
+.btn {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+}
+
+.btn-primary {
+    background: #007bff;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #0056b3;
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.content-below {
+    background: #e9ecef;
+    padding: 20px;
+    border-radius: 8px;
+    margin-top: 20px;
+}
+
+.demo-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+
+.demo-table th,
+.demo-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+.demo-table th {
+    background: #f1f3f4;
+    font-weight: 600;
+}
+
+.alert {
+    padding: 15px;
+    margin: 20px 0;
+    border-radius: 6px;
+    border-left: 4px solid #28a745;
+    background: #d4edda;
+    color: #155724;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="test-container">
+    <h1>🔧 Simple Search Fix - WORKING SOLUTION</h1>
+    
+    <div class="alert">
+        <strong>✅ FIXED:</strong> This search dropdown will NOT push content down. It floats over the content below.
+    </div>
+
+    <!-- Search Section -->
+    <div class="search-section">
+        <h3>Search Test</h3>
+        <p>Type names like: Ajay, Priya, Rahul, Sneha, Vikram</p>
+        
+        <form method="GET">
+            <div class="search-input-group">
+                <i class="bi bi-search"></i>
+                <input type="text" 
+                       id="test-search" 
+                       name="search" 
+                       placeholder="Start typing names..."
+                       value="{{ request.GET.search }}">
+                <button type="submit" class="btn btn-primary">Search</button>
+                <a href="?" class="btn btn-secondary">Clear</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Content that should NOT move -->
+    <div class="content-below">
+        <h4>📋 This content should stay in place</h4>
+        <p>When you search above, this content should NOT move down. The dropdown should float over it.</p>
+        
+        <table class="demo-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Ajay Singh</td>
+                    <td>ajay.singh@example.com</td>
+                    <td>+91 98765 43210</td>
+                    <td><span style="color: green;">Active</span></td>
+                </tr>
+                <tr>
+                    <td>Priya Sharma</td>
+                    <td>priya.sharma@example.com</td>
+                    <td>+91 98765 43211</td>
+                    <td><span style="color: green;">Active</span></td>
+                </tr>
+                <tr>
+                    <td>Rahul Kumar</td>
+                    <td>rahul.kumar@example.com</td>
+                    <td>+91 98765 43212</td>
+                    <td><span style="color: green;">Active</span></td>
+                </tr>
+                <tr>
+                    <td>Sneha Patel</td>
+                    <td>sneha.patel@example.com</td>
+                    <td>+91 98765 43213</td>
+                    <td><span style="color: orange;">Pending</span></td>
+                </tr>
+                <tr>
+                    <td>Vikram Gupta</td>
+                    <td>vikram.gupta@example.com</td>
+                    <td>+91 98765 43214</td>
+                    <td><span style="color: green;">Active</span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div style="margin-top: 30px; padding: 20px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">
+        <h5>🎯 How to Test:</h5>
+        <ol>
+            <li>Click in the search box above</li>
+            <li>Type "A" or "Pr" or "Ra"</li>
+            <li>Watch the dropdown appear WITHOUT moving the table below</li>
+            <li>Click on any name to select it</li>
+            <li>Click outside to close the dropdown</li>
+        </ol>
+    </div>
+</div>
+
+<script src="{% static 'js/simple-search-fix.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Sample data
+    const names = [
+        'Ajay Singh',
+        'Priya Sharma', 
+        'Rahul Kumar',
+        'Sneha Patel',
+        'Vikram Gupta',
+        'Anita Verma',
+        'Suresh Yadav',
+        'Kavita Joshi',
+        'Amit Agarwal',
+        'Sunita Devi',
+        'Ravi Tiwari',
+        'Meera Nair',
+        'Deepak Jain',
+        'Pooja Reddy',
+        'Sanjay Mishra'
+    ];
+    
+    // Initialize the simple search
+    initSimpleSearch('test-search', names, 'Start typing names...');
+    
+    console.log('Simple search initialized with', names.length, 'names');
+});
+</script>
+{% endblock %}

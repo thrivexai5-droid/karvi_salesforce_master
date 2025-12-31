@@ -27,14 +27,15 @@ body {
 
 /* For dashboard page - keep fixed height */
 body.dashboard-page {
-    overflow: hidden;
-    height: 100vh;
+    overflow: hidden !important;
+    height: 100vh !important;
 }
 
 /* For other pages - allow scrolling */
 body.scrollable-page {
-    overflow-y: auto;
-    min-height: 100vh;
+    overflow-y: auto !important;
+    min-height: 100vh !important;
+    height: auto !important;
 }
 
 /* Ensure scrollable pages have proper content area */
@@ -44,8 +45,8 @@ body.scrollable-page {
     padding: 0 !important;
 }
 
-/* New layout body styles */
-body:has(.dashboard-container-new) {
+/* New layout body styles - Only for dashboard page */
+body.dashboard-page:has(.dashboard-container-new) {
     overflow: hidden;
     height: 100vh;
     margin: 0;
@@ -488,10 +489,32 @@ body:has(.dashboard-container-new) {
     width: calc(100% - 260px) !important;
 }
 
+/* Main Content Area - No Sidebar (New Layout) */
+.main-content-no-sidebar {
+    flex: 1 !important;
+    padding: 1.5rem !important;
+    background: #f8fafc !important;
+    width: 100% !important;
+    height: calc(100vh - 80px) !important; /* Full height minus header */
+}
+
 /* Dashboard page specific - No scrolling */
 .dashboard-page .main-content-with-sidebar {
     padding: 0.5rem 0 !important;
     overflow: hidden !important;
+}
+
+/* Dashboard page specific - No scrolling for new layout */
+.dashboard-page .main-content-no-sidebar {
+    overflow: hidden !important;
+    padding: 0.5rem !important;
+}
+
+/* Scrollable pages - Allow scrolling for new layout */
+.scrollable-page .main-content-no-sidebar {
+    overflow-y: auto !important;
+    min-height: calc(100vh - 80px) !important;
+    height: auto !important;
 }
 
 /* Bottom Navigation - Hidden in new layout */
@@ -611,7 +634,7 @@ body:has(.dashboard-container-new) {
 }
 
 .page-title {
-    font-size: 1.5rem;
+    font-size: 1rem;
     font-weight: 700;
     color: #111827;
     margin: 0;
@@ -1319,8 +1342,9 @@ body:has(.dashboard-container-new) {
 }
 
 .large-card .btn {
-    font-size: 0.8rem !important;
-    padding: 0.5rem 1rem !important;
+    font-size: 0.6rem !important;
+    padding: 2rem 1rem !important;
+    
 }
 
 .large-card h6 {
@@ -1442,7 +1466,7 @@ body:has(.dashboard-container-new) {
 }
 /* User Management Page Styles */
 .user-management-container {
-    padding: 2rem;
+    padding: 0.5rem;
     max-width: 1400px;
     margin: 0 auto;
 }
@@ -1457,7 +1481,7 @@ body:has(.dashboard-container-new) {
 }
 
 .page-title {
-    font-size: 1.75rem;
+    font-size: 1rem;
     font-weight: 700;
     color: #1f2937;
     margin: 0;
@@ -1479,7 +1503,7 @@ body:has(.dashboard-container-new) {
 .stat-card {
     background: white;
     border-radius: 1rem;
-    padding: 1.5rem;
+    padding: 0.5rem;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     border: 1px solid #e5e7eb;
     display: flex;
@@ -1488,8 +1512,8 @@ body:has(.dashboard-container-new) {
 }
 
 .stat-icon {
-    width: 3rem;
-    height: 3rem;
+    width: 2.5rem;
+    height:2.5rem;
     border-radius: 0.75rem;
     display: flex;
     align-items: center;
@@ -1499,7 +1523,7 @@ body:has(.dashboard-container-new) {
 }
 
 .stat-content h3 {
-    font-size: 1.5rem;
+    font-size: 1rem;
     font-weight: 700;
     margin: 0;
     color: #1f2937;
@@ -1971,7 +1995,7 @@ body:has(.dashboard-container-new) {
     justify-content: center;
     width: 40px;
     height: 40px;
-    color: rgb(0, 0, 0);
+    color: rgb(2, 1, 1);
     font-weight: 600;
     font-size: 0.875rem;
 }
@@ -2290,7 +2314,7 @@ body:has(.dashboard-container-new) {
 
 .permissions-badges .bg-primary {
     background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
-    border-color: #1d4ed8;
+    border-color: #ffffff;
 }
 
 .permissions-badges .bg-warning {

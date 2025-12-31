@@ -1,4 +1,5 @@
 {% extends 'dashboard/base.html' %}
+{% load static %}
 
 {% block body_class %}scrollable-page{% endblock %}
 
@@ -117,7 +118,7 @@
     <div class="page-header">
         <div>
             <h2 class="page-title">Contacts & Company Management</h2>
-            <p class="page-subtitle">Manage customer contacts and company information</p>
+            
         </div>
         <div class="d-flex gap-2">
             <a href="{% url 'dashboard:company_create' %}" class="btn btn-success add-btn">
@@ -150,9 +151,17 @@
         <form method="GET" class="search-input-group">
             <i class="bi bi-search"></i>
             {% if view_type == 'companies' %}
-                <input type="text" name="search" class="form-control" placeholder="Search companies by name or city..." value="{{ search_query }}">
+                <input type="text" 
+                       name="search" 
+                       class="form-control" 
+                       placeholder="Search companies by name or city..." 
+                       value="{{ search_query }}">
             {% else %}
-                <input type="text" name="search" class="form-control" placeholder="Search contacts by name, email, phone, or company..." value="{{ search_query }}">
+                <input type="text" 
+                       name="search" 
+                       class="form-control" 
+                       placeholder="Search contacts by name, email, phone, or company..." 
+                       value="{{ search_query }}">
             {% endif %}
             <input type="hidden" name="view" value="{{ view_type }}">
             <button type="submit" class="btn btn-outline-primary">Search</button>
@@ -190,8 +199,8 @@
                                 <th>Email</th>
                                 <th>Phone</th>
                                 <th>Company</th>
-                                <th>Location</th>
-                                <th>Created</th>
+                                <!-- <th>Location</th> -->
+                                <!-- <th>Created</th> -->
                                 <th>Actions</th>
                             {% endif %}
                         </tr>
@@ -211,9 +220,9 @@
                                     <td>
                                         <span class="badge bg-primary">{{ item.city_1 }}</span>
                                     </td>
-                                    <td>
+                                    <!-- <td>
                                         <span class="text-muted">{{ item.created_at|date:"M d, Y" }}</span>
-                                    </td>
+                                    </td> -->
                                     <td>
                                         <div class="action-buttons">
                                             <a href="{% url 'dashboard:company_edit' item.id %}" class="btn btn-sm btn-outline-primary" title="Edit">
@@ -246,12 +255,12 @@
                                     </td>
                                     <td>
                                         <div class="fw-semibold">{{ item.company.company_name }}</div>
-                                        <small class="text-muted">{{ item.company.get_cities_display }}</small>
+                                        <!-- <small class="text-muted">{{ item.company.get_cities_display }}</small> -->
                                     </td>
-                                    <td>
+                                    <!-- <td>
                                         <span class="badge bg-primary">{{ item.location_city }}</span>
-                                    </td>
-                                    <td>{{ item.created_at|date:"M d, Y" }}</td>
+                                    </td> -->
+                                    <!-- <td>{{ item.created_at|date:"M d, Y" }}</td> -->
                                     <td>
                                         <div class="action-buttons">
                                             <a href="{% url 'dashboard:contact_edit' item.id %}" class="btn btn-sm btn-outline-primary" title="Edit">
@@ -486,4 +495,20 @@ function getCookie(name) {
     return cookieValue;
 }
 </script>
+
+<script src="{% static 'js/simple-search-fix.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const viewType = '{{ view_type }}';
+    
+    if (viewType === 'companies') {
+        // Initialize simple search for companies
+        initSimpleSearch('company-search-simple', '/api/company-names/', 'Search companies by name or city...');
+    } else {
+        // Initialize simple search for contacts  
+        initSimpleSearch('contact-search-simple', '/api/contact-names/', 'Search contacts by name, email, phone, or company...');
+    }
+});
+</script>
+
 {% endblock %}
