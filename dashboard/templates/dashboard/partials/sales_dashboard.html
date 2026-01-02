@@ -1,222 +1,400 @@
-<!-- Sales Dashboard -->
-<div class="row g-4">
-    <!-- Welcome Section -->
-    <div class="col-12">
-        <div class="card border-0 shadow-sm bg-primary text-white">
-            <div class="card-body">
-                <h4 class="card-title mb-2">
-                    <i class="bi bi-person-badge me-2"></i>
-                    Welcome, {{ user.get_full_name|default:user.username }}
-                </h4>
-                <p class="card-text mb-0">
-                    Sales Dashboard - 
-                    {% if is_user_specific %}
-                        Your assigned inquiries, quotations, and invoices
-                    {% else %}
-                        Manage all inquiries, quotations, and invoices
-                    {% endif %}
-                </p>
-            </div>
-        </div>
-    </div>
+<!-- Sales Dashboard - Bootstrap 5 Only -->
+{% load static %}
+<link rel="stylesheet" href="{% static 'css/dashboard-ui.css' %}">
 
-    <!-- Sales Metrics Cards -->
-    <div class="col-md-3">
-        <div class="card border-0 shadow-sm">
-            <div class="card-body text-center">
-                <div class="card-icon mx-auto mb-3">
-                    <i class="bi bi-question-circle-fill text-primary" style="font-size: 2rem;"></i>
-                </div>
-                <h3 class="fw-bold text-primary">{{ total_inquiries }}</h3>
-                <p class="text-muted mb-0">
-                    {% if is_user_specific %}My Inquiries{% else %}Total Inquiries{% endif %}
-                </p>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-3">
-        <div class="card border-0 shadow-sm">
-            <div class="card-body text-center">
-                <div class="card-icon mx-auto mb-3">
-                    <i class="bi bi-clock-fill text-warning" style="font-size: 2rem;"></i>
-                </div>
-                <h3 class="fw-bold text-warning">{{ active_inquiries }}</h3>
-                <p class="text-muted mb-0">
-                    {% if is_user_specific %}My Active Inquiries{% else %}Active Inquiries{% endif %}
-                </p>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-3">
-        <div class="card border-0 shadow-sm">
-            <div class="card-body text-center">
-                <div class="card-icon mx-auto mb-3">
-                    <i class="bi bi-chat-quote-fill text-success" style="font-size: 2rem;"></i>
-                </div>
-                <h3 class="fw-bold text-success">{{ quotations_sent }}</h3>
-                <p class="text-muted mb-0">
-                    {% if is_user_specific %}My Quotations{% else %}Quotations Sent{% endif %}
-                </p>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-3">
-        <div class="card border-0 shadow-sm">
-            <div class="card-body text-center">
-                <div class="card-icon mx-auto mb-3">
-                    <i class="bi bi-receipt-cutoff text-info" style="font-size: 2rem;"></i>
-                </div>
-                <h3 class="fw-bold text-info">{{ total_invoices }}</h3>
-                <p class="text-muted mb-0">Total Invoices</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Sales Pipeline Chart -->
-    <div class="col-md-8">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-transparent">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-graph-up me-2"></i>
-                    {% if is_user_specific %}My Sales Pipeline{% else %}Sales Pipeline{% endif %}
-                </h5>
-            </div>
-            <div class="card-body">
-                <div id="salesChart" style="height: 300px;"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Quick Actions -->
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-transparent">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-lightning-fill me-2"></i>
-                    Quick Actions
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="d-grid gap-2">
-                    {% if user.userprofile.can_access_inquiry_handler %}
-                        <a href="{% url 'dashboard:inquiry_handler_management' %}" class="btn btn-outline-primary">
-                            <i class="bi bi-plus-circle me-2"></i>
-                            {% if is_user_specific %}My Inquiries{% else %}Manage Inquiries{% endif %}
-                        </a>
-                    {% endif %}
-                    {% if user.userprofile.can_access_quotation_generation %}
-                        <a href="{% url 'dashboard:quotation_management' %}" class="btn btn-outline-success">
-                            <i class="bi bi-file-earmark-text me-2"></i>
-                            Create Quotation
-                        </a>
-                    {% endif %}
-                    {% if user.userprofile.can_access_invoice_generation %}
-                        <a href="{% url 'dashboard:invoice_management' %}" class="btn btn-outline-info">
-                            <i class="bi bi-receipt me-2"></i>
-                            Generate Invoice
-                        </a>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Recent Activity -->
-    <div class="col-12">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-transparent">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-activity me-2"></i>
-                    {% if is_user_specific %}My Performance Overview{% else %}Sales Performance Overview{% endif %}
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="border-end pe-4">
-                            <h6 class="text-muted">Pending Follow-ups</h6>
-                            <p class="h4 text-warning">{{ pending_invoices }}</p>
-                            <small class="text-muted">Invoices awaiting payment</small>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="ps-4">
-                            <h6 class="text-muted">Conversion Rate</h6>
-                            <p class="h4 text-success">
-                                {% if total_inquiries > 0 %}
-                                    {{ quotations_sent|floatformat:0 }}/{{ total_inquiries }}
+<div class="container-fluid bg-white p-3" style="min-height: 100vh;">
+    <!-- Top Row -->
+    <div class="row g-3 mb-3" style="min-height: 42vh;">
+        <!-- Running Projects Card -->
+        <div class="col-3">
+            <div class="card h-100 dashboard-card">
+                <div class="card-body p-3">
+                    <h5 class="fw-semibold fs-5 mb-3 dashboard-label text-center">Running Projects</h5>
+                    
+                    <!-- Quotations Table -->
+                    <div class="table-responsive" style="max-height: 380px; overflow-y: auto;">
+                        <table class="table table-sm table-borderless">
+                            <thead>
+                                <tr class="border-bottom">
+                                    <th class="fw-semibold text-muted" style="font-size: 0.8rem;">Pro No</th>
+                                    <th class="fw-semibold text-muted" style="font-size: 0.8rem;">Company</th>
+                                    <th class="fw-semibold text-muted" style="font-size: 0.8rem;">Customer</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if recent_quotations %}
+                                    {% for quote in recent_quotations %}
+                                    <tr>
+                                        <td class="fw-semibold" style="font-size: 0.85rem;">{{ quote.quote_no }}</td>
+                                        <td class="text-muted" style="font-size: 0.85rem;">
+                                            {% if quote.company.company %}
+                                                {{ quote.company.company.company_name|truncatechars:12 }}
+                                            {% else %}
+                                                {{ quote.company.customer_name|truncatechars:12 }}
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-muted" style="font-size: 0.85rem;">{{ quote.customer_name|truncatechars:12 }}</td>
+                                    </tr>
+                                    {% endfor %}
                                 {% else %}
-                                    0/0
+                                    <!-- No quotations found message -->
+                                    <tr>
+                                        <td colspan="3" class="text-center text-muted" style="font-size: 0.85rem; padding: 2rem;">
+                                            No running projects found.
+                                            <br>
+                                            <small>Active inquiries will appear here.</small>
+                                        </td>
+                                    </tr>
                                 {% endif %}
-                            </p>
-                            <small class="text-muted">
-                                {% if is_user_specific %}My inquiries to quotations{% else %}Inquiries to quotations{% endif %}
-                            </small>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Total Count -->
+                    <div class="text-center mt-2 pt-2 border-top">
+                        <small class="text-muted" style="font-size: 0.8rem;">Total: {{ total_quotations|default:"0" }} running projects</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sales Overview Card -->
+        <div class="col-3">
+            <div class="card h-100 dashboard-card">
+                <div class="card-body p-3 d-flex flex-column justify-content-center text-center">
+                    <h5 class="fw-semibold fs-5 mb-3 dashboard-label">Sales Overview</h5>
+                    <div class="d-flex justify-content-center flex-grow-1 align-items-center chart-wrapper">
+                        <canvas id="salesPieChart" width="140" height="140"></canvas>
+                    </div>
+                    <div class="mt-3">
+                        <small class="text-muted fs-6">
+                            <span class="text-success">■</span> Active
+                            <span class="text-primary ms-2">■</span> Completed
+                            <span class="text-warning ms-2">■</span> Pending
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Operations Status Card -->
+        <div class="col-3">
+            <div class="card h-100 dashboard-card">
+                <div class="card-body p-3 d-flex flex-column justify-content-center text-center">
+                    <h5 class="fw-semibold fs-5 mb-3 dashboard-label">Operations Status</h5>
+                    <div class="d-flex justify-content-center flex-grow-1 align-items-center chart-wrapper">
+                        <canvas id="operationsPieChart" width="140" height="140"></canvas>
+                    </div>
+                    <div class="mt-3">
+                        <small class="text-muted fs-6">
+                            <span class="text-success">■</span> Processing
+                            <span class="text-primary ms-2">■</span> Delivered
+                            <span class="text-warning ms-2">■</span> Invoiced
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payment Status Card -->
+        <div class="col-3">
+            <div class="card h-100 dashboard-card">
+                <div class="card-body d-flex flex-column justify-content-center">
+                    <h5 class="fw-semibold fs-5 text-center mb-4 dashboard-label">Payment Status</h5>
+                    
+                    <!-- Total Payment Section with Icon -->
+                    <div class="payment-metric mb-4">
+                        <div class="d-flex align-items-center justify-content-center">
+                            <div class="metric-icon bg-success bg-opacity-10 rounded-circle p-2 me-3">
+                                <i class="bi bi-currency-rupee text-success fs-5"></i>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-muted small">Total Payment</div>
+                                <div class="fw-bold fs-4 text-success">₹{{ total_payment|default:"0" }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- List to Take Section with Icon -->
+                    <div class="payment-metric">
+                        <div class="d-flex align-items-center justify-content-center">
+                            <div class="metric-icon bg-warning bg-opacity-10 rounded-circle p-2 me-3">
+                                <i class="bi bi-list-check text-warning fs-5"></i>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-muted small">List to Take</div>
+                                <div class="fw-bold fs-4 text-warning">₹15,780</div>
+                            </div>
                         </div>
                     </div>
                 </div>
-                
-                {% if is_user_specific %}
-                <div class="mt-3 pt-3 border-top">
-                    <div class="alert alert-info">
-                        <i class="bi bi-info-circle me-2"></i>
-                        <strong>Note:</strong> You are viewing only inquiries assigned to you. 
-                        Contact your administrator to get access to additional inquiries.
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Row -->
+    <div class="row g-3" style="min-height: 55vh;">
+        <!-- Financial Sustai Card -->
+        <div class="col-3">
+            <div class="card h-80 dashboard-card">
+                <div class="card-body p-3 ">
+                    <h3 class="fw-semibold fs-5 mb-4 dashboard-label text-center">TASK</h3>
+                    
+                    <!-- Net Revenue -->
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <div class="fw-semibold fs-6 dashboard-label">Net Revenue</div>
+                            <div class="text-muted fs-6" style="font-size: 0.8rem;">Total Invoice - Fixed Costs + Additional</div>
+                        </div>
+                        <div class="fw-bold fs-6 dashboard-number">-₹1,944,181</div>
+                    </div>
+                    
+                    <!-- Monthly Expenses -->
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <div class="fw-semibold fs-6 dashboard-label">Monthly Expenses</div>
+                            <div class="text-muted fs-6" style="font-size: 0.8rem;">₹7,636/day burn rate</div>
+                        </div>
+                        <div class="fw-bold fs-6 dashboard-number">₹229,083</div>
+                    </div>
+                    
+                    <!-- Sustainability Period -->
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <div class="fw-semibold fs-6 dashboard-label">Sustainability Period</div>
+                            <div class="text-muted fs-6" style="font-size: 0.8rem;">Days business can sustain (Critical)</div>
+                        </div>
+                        <div class="fw-bold fs-6 text-danger">Critical</div>
+                    </div>
+                    
+                    <!-- Target Date -->
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="fw-semibold fs-6 dashboard-label">Target Date</div>
+                            <div class="text-muted fs-6" style="font-size: 0.8rem;">Immediate action required</div>
+                        </div>
+                        <div class="fw-bold fs-6 dashboard-number">Today</div>
                     </div>
                 </div>
-                {% endif %}
+            </div>
+        </div>
+
+        <!-- Purchase Orders Table -->
+        <div class="col-6">
+            <div class="card h-100 dashboard-card">
+                <div class="card-body p-3">
+                    <h5 class="fw-semibold fs-5 mb-3 dashboard-label text-center">
+                        {% if is_user_specific %}Supply sheet{% else %}Recent Purchase Orders{% endif %}
+                    </h5>
+                    
+                    <!-- PO Table -->
+                    <div class="table-responsive" style="max-height: 380px; overflow-y: auto;">
+                        <table class="table table-sm table-borderless">
+                            <thead>
+                                <tr class="border-bottom">
+                                    <th class="fw-semibold text-muted" style="font-size: 0.8rem;">Sr. No.</th>
+                                    <th class="fw-semibold text-muted" style="font-size: 0.8rem;">PO Number</th>
+                                    <th class="fw-semibold text-muted" style="font-size: 0.8rem;">Company</th>
+                                    <th class="fw-semibold text-muted" style="font-size: 0.8rem;">Customer</th>
+                                    <th class="fw-semibold text-muted" style="font-size: 0.8rem;">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if recent_purchase_orders %}
+                                    {% for po in recent_purchase_orders %}
+                                    <tr>
+                                        <td class="fw-semibold text-muted" style="font-size: 0.85rem;">{{ forloop.counter }}</td>
+                                        <td class="fw-semibold" style="font-size: 0.85rem;">{{ po.po_number }}</td>
+                                        <td class="text-muted" style="font-size: 0.85rem;">
+                                            {% if po.company.company %}
+                                                {{ po.company.company.company_name|truncatechars:10 }}
+                                            {% else %}
+                                                {{ po.company.customer_name|truncatechars:10 }}
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-muted" style="font-size: 0.85rem;">{{ po.customer_name|truncatechars:10 }}</td>
+                                        <td style="font-size: 0.85rem;">
+                                            {% if po.due_days %}
+                                                {% if po.due_days > 0 %}
+                                                    <span class="badge bg-success">{{ po.due_days }}d left</span>
+                                                {% elif po.due_days == 0 %}
+                                                    <span class="badge bg-warning">Due today</span>
+                                                {% else %}
+                                                    <span class="badge bg-danger">{{ po.due_days|add:"-1" }}d overdue</span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="badge bg-secondary">Pending</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <!-- No POs found message -->
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted" style="font-size: 0.85rem; padding: 2rem;">
+                                            {% if is_user_specific %}
+                                                No purchase orders assigned to you yet.
+                                            {% else %}
+                                                No purchase orders found in the database.
+                                            {% endif %}
+                                            <br>
+                                            <small>Create purchase orders to see them here.</small>
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Total Count -->
+                    <div class="text-center mt-2 pt-2 border-top">
+                        <small class="text-muted" style="font-size: 0.8rem;">
+                            Total: {{ total_purchase_orders|default:"0" }} POs
+                            {% if is_user_specific %} (assigned to you){% endif %}
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Invoice Generated Card -->
+        <div class="col-3">
+            <div class="card h-100 dashboard-card">
+                <div class="card-body p-3">
+                    <h5 class="fw-semibold fs-5 mb-3 dashboard-label text-center">Invoice Generated</h5>
+                    
+                    <!-- Invoice List Table -->
+                    <div class="table-responsive flex-grow-1" style="max-height: 480px; overflow-y: auto;"></div>
+                        <table class="table table-sm table-borderless">
+                            <thead>
+                                <tr class="border-bottom">
+                                    <th class="fw-semibold text-muted" style="font-size: 0.8rem;">No.</th>
+                                    <th class="fw-semibold text-muted" style="font-size: 0.8rem;">Invoice #</th>
+                                    <th class="fw-semibold text-muted" style="font-size: 0.8rem;">Company</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if recent_invoices %}
+                                    {% for invoice in recent_invoices %}
+                                    <tr>
+                                        <td class="fw-semibold" style="font-size: 0.85rem;">{{ forloop.counter }}</td>
+                                        <td class="fw-semibold" style="font-size: 0.85rem;">{{ invoice.invoice_number }}</td>
+                                        <td class="text-muted" style="font-size: 0.85rem;">{{ invoice.company.company.company_name|truncatechars:15 }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <!-- Fallback sample data if no invoices exist -->
+                                    <tr>
+                                        <td class="fw-semibold" style="font-size: 0.85rem;">1</td>
+                                        <td class="fw-semibold" style="font-size: 0.85rem;">KEC/001/2526</td>
+                                        <td class="text-muted" style="font-size: 0.85rem;">ABC Corp</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-semibold" style="font-size: 0.85rem;">2</td>
+                                        <td class="fw-semibold" style="font-size: 0.85rem;">KEC/002/2526</td>
+                                        <td class="text-muted" style="font-size: 0.85rem;">XYZ Ltd</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-semibold" style="font-size: 0.85rem;">3</td>
+                                        <td class="fw-semibold" style="font-size: 0.85rem;">KEC/003/2526</td>
+                                        <td class="text-muted" style="font-size: 0.85rem;">Tech Solutions</td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Total Count -->
+                    <div class="text-center mt-2 pt-2 border-top">
+                        <small class="text-muted" style="font-size: 0.8rem;">Total: {{ total_invoices|default:"0" }} invoices</small>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Sales Dashboard Scripts -->
+<!-- Chart.js Implementation -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Sales Pipeline Chart
-    const salesChartData = {{ sales_chart_data.data|safe }};
-    const salesChartCategories = {{ sales_chart_data.categories|safe }};
+    // Get data from Django template
+    const salesData = [
+        parseInt('{{ total_inquiries|default:"40" }}'),
+        parseInt('{{ quotations_sent|default:"35" }}'),
+        parseInt('{{ active_inquiries|default:"25" }}')
+    ];
     
-    const salesChartOptions = {
-        chart: {
-            type: 'bar',
-            height: 300,
-            toolbar: { show: false }
-        },
-        series: [{
-            name: 'Inquiries',
-            data: salesChartData
-        }],
-        xaxis: {
-            categories: salesChartCategories,
-            labels: {
-                style: {
-                    fontSize: '12px'
+    const operationsData = [
+        parseInt('{{ pending_invoices|default:"30" }}'),
+        parseInt('{{ total_invoices|default:"45" }}'),
+        parseInt('{{ quotations_sent|default:"25" }}')
+    ];
+
+    // Sales Overview Pie Chart
+    const salesCtx = document.getElementById('salesPieChart');
+    if (salesCtx) {
+        new Chart(salesCtx, {
+            type: 'pie',
+            data: {
+                labels: ['Active Projects', 'Completed', 'Pending'],
+                datasets: [{
+                    data: salesData,
+                    backgroundColor: ['#198754', '#0d6efd', '#ffc107'],
+                    borderWidth: 2,
+                    borderColor: '#ffffff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = Math.round((context.parsed * 100) / total);
+                                return context.label + ': ' + percentage + '%';
+                            }
+                        }
+                    }
                 }
             }
-        },
-        colors: ['#0d6efd'],
-        plotOptions: {
-            bar: {
-                borderRadius: 4,
-                columnWidth: '60%'
+        });
+    }
+
+    // Operations Overview Pie Chart
+    const operationsCtx = document.getElementById('operationsPieChart');
+    if (operationsCtx) {
+        new Chart(operationsCtx, {
+            type: 'pie',
+            data: {
+                labels: ['Processing', 'Delivered', 'Invoiced'],
+                datasets: [{
+                    data: operationsData,
+                    backgroundColor: ['#198754', '#0d6efd', '#ffc107'],
+                    borderWidth: 2,
+                    borderColor: '#ffffff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = Math.round((context.parsed * 100) / total);
+                                return context.label + ': ' + percentage + '%';
+                            }
+                        }
+                    }
+                }
             }
-        },
-        dataLabels: {
-            enabled: true,
-            style: {
-                colors: ['#fff']
-            }
-        },
-        grid: {
-            borderColor: '#f1f1f1'
-        }
-    };
-    
-    const salesChart = new ApexCharts(document.querySelector("#salesChart"), salesChartOptions);
-    salesChart.render();
+        });
+    }
 });
 </script>

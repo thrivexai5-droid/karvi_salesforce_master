@@ -751,7 +751,7 @@ body.dashboard-page:has(.dashboard-container-new) {
 /* Dashboard Content */
 .dashboard-content {
     flex: 1;
-    padding: 1.5rem;
+    padding: 0.4 rem;
     background: #f8fafc;
 }
 

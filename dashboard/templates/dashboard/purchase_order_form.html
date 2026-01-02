@@ -500,7 +500,10 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(err => {
             console.error('Extraction Error:', err);
+            fileError.innerText = `Network error: ${err.message}. Please check your internet connection and try again.`;
+            fileError.style.display = 'block';
             uploadBtn.disabled = false;
+            uploadBtn.innerHTML = '<i class="bi bi-cpu me-1"></i>Extract Data';
         });
     });
 

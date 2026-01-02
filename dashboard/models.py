@@ -1124,3 +1124,62 @@ class DraftImage(models.Model):
         verbose_name = "Draft Image"
         verbose_name_plural = "Draft Images"
         ordering = ['fixture_index']
+
+
+class Notification(models.Model):
+    """Notification model for admin dashboard notifications"""
+    
+    NOTIFICATION_TYPES = [
+        ('additional_supply', 'Additional Supply Created'),
+        ('purchase_order', 'Purchase Order Created'),
+        ('invoice', 'Invoice Generated'),
+        ('quotation', 'Quotation Generated'),
+    ]
+    
+    # Notification details
+    notification_type = models.CharField(
+        max_length=20,
+        choices=NOTIFICATION_TYPES,
+        verbose_name="Notification Type"
+    )
+    
+    title = models.CharField(
+        max_length=200,
+        verbose_name="Notification Title"
+    )
+    
+    message = models.TextField(
+        verbose_name="Notification Message"
+    )
+    
+    # Related data (JSON format for flexibility)
+    data = models.JSONField(
+        default=dict,
+        verbose_name="Notification Data",
+        help_text="Additional data like PO number, company, customer"
+    )
+    
+    # User and status
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        verbose_name="Created By",
+        help_text="User who triggered this notification"
+    )
+    
+    is_read = models.BooleanField(
+        default=False,
+        verbose_name="Is Read"
+    )
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"{self.title} - {self.created_at.strftime('%Y-%m-%d %H:%M')}"
+    
+    class Meta:
+        verbose_name = "Notification"
+        verbose_name_plural = "Notifications"
+        ordering = ['-created_at']

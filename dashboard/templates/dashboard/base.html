@@ -116,10 +116,10 @@
                     </button>
 
                     <div class="header-icons">
-                        <div class="notification-icon">
+                        <a href="{% url 'dashboard:notifications' %}" class="notification-icon" style="text-decoration: none; color: inherit;">
                             <i class="bi bi-bell"></i>
-                            <span class="badge">3</span>
-                        </div>
+                            <span class="badge" id="notification-count">0</span>
+                        </a>
                         <div class="dropdown">
                             <div class="profile-avatar dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"
                                 style="cursor: pointer;">
@@ -293,6 +293,85 @@
                 this.classList.toggle('active');
             });
         }
+    </script>
+
+    <!-- Notification Count Script -->
+    <script>
+        // Function to update notification count
+        function updateNotificationCount() {
+            fetch('{% url "dashboard:notification_count" %}')
+                .then(response => response.json())
+                .then(data => {
+                    const badge = document.getElementById('notification-count');
+                    if (badge) {
+                        badge.textContent = data.count;
+                        // Hide badge if count is 0
+                        if (data.count === 0) {
+                            badge.style.display = 'none';
+                        } else {
+                            badge.style.display = 'inline';
+                        }
+                    }
+                })
+                .catch(error => console.error('Error fetching notification count:', error));
+        }
+
+        // Function to clean up old notifications (48+ hours)
+        function cleanupOldNotifications() {
+            // Only run cleanup for admin/manager users
+            {% if user.userprofile.get_roles_list == 'admin' or user.userprofile.get_roles_list == 'manager' %}
+            fetch('{% url "dashboard:cleanup_notifications_ajax" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+                                   document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || 
+                                   '{{ csrf_token }}',
+                    'Content-Type': 'application/json',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.deleted_count > 0) {
+                    console.log(`Cleaned up ${data.deleted_count} old notifications`);
+                }
+            })
+            .catch(error => console.error('Error during notification cleanup:', error));
+            {% endif %}
+        }
+
+        // Check if cleanup should run (once per session)
+        function shouldRunCleanup() {
+            const lastCleanup = sessionStorage.getItem('lastNotificationCleanup');
+            const now = new Date().getTime();
+            const tenSeconds = 10 * 1000; // 10 seconds in milliseconds
+            
+            if (!lastCleanup || (now - parseInt(lastCleanup)) > tenSeconds) {
+                sessionStorage.setItem('lastNotificationCleanup', now.toString());
+                return true;
+            }
+            return false;
+        }
+
+        // Update notification count on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateNotificationCount();
+            
+            // Run cleanup if needed (max once every 10 seconds per session)
+            if (shouldRunCleanup()) {
+                // Delay cleanup by 2 seconds to not interfere with page load
+                setTimeout(cleanupOldNotifications, 2000);
+            }
+        });
+
+        // Update notification count every 30 seconds
+        setInterval(updateNotificationCount, 30000);
+        
+        // Run cleanup every 10 seconds
+        setInterval(function() {
+            if (shouldRunCleanup()) {
+                cleanupOldNotifications();
+            }
+        }, 10 * 1000); // 10 seconds
     </script>
 </body>
 

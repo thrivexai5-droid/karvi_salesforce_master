@@ -138,9 +138,7 @@
                             <th>Delivery Date</th>
                             <th>Status</th>
                             <th>Sales Person</th>
-                            <th>Sales %</th>
                             <th>Project Manager</th>
-                            <th>PM %</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -154,7 +152,7 @@
                                 </td>
                                 <td>
                                     <div class="fw-semibold">{{ order.po_number }}</div>
-                                    <small class="text-muted">{{ order.days_to_mfg }} days MFG</small>
+                                    
                                 </td>
                                 <td>
                                     <div class="fw-semibold">{{ order.company.company }}</div>
@@ -176,66 +174,34 @@
                                 <td>
                                     {% if order.due_days is not None %}
                                         {% if order.due_days > 7 %}
-                                            <span class="badge" style="background-color: #22c55e; color: white;">{{ order.due_days }}</span>
+                                            <span class="badge" style="background-color: #22c55e; color: black;">{{ order.due_days }}</span>
                                         {% elif order.due_days > 0 %}
-                                            <span class="badge" style="background-color: #f97316; color: white;">{{ order.due_days }}</span>
+                                            <span class="badge" style="background-color: #f97316; color: black;">{{ order.due_days }}</span>
                                         {% elif order.due_days == 0 %}
-                                            <span class="badge" style="background-color: #f59e0b; color: white;">0</span>
+                                            <span class="badge" style="background-color: #f59e0b; color: black;">0</span>
                                         {% else %}
-                                            <span class="badge" style="background-color: #ef4444; color: white;">{{ order.due_days|stringformat:"d"|slice:"1:" }}</span>
+                                            <span class="badge" style="background-color: #ef4444; color: black;">{{ order.due_days|stringformat:"d"|slice:"1:" }}</span>
                                         {% endif %}
                                     {% else %}
-                                        <span class="badge bg-secondary">-</span>
+                                        <span class="badge" style="background-color: #6b7280; color: black;">-</span>
                                     {% endif %}
                                 </td>
                                 <td>
                                     {% if order.sales_person %}
-                                        <div class="d-flex align-items-center">
-                                            <div class="user-avatar me-2">
-                                                <div class="index-number" style="width: 30px; height: 30px; font-size: 0.7rem;">
-                                                    {{ order.sales_person.first_name|first|upper|default:order.sales_person.username|first|upper }}
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <div class="fw-semibold" style="font-size: 0.85rem;">
-                                                    {{ order.sales_person.get_full_name|default:order.sales_person.username }}
-                                                </div>
-                                            </div>
+                                        <div class="fw-semibold" style="font-size: 0.85rem;">
+                                            {{ order.sales_person.get_full_name|default:order.sales_person.username }}
                                         </div>
                                     {% else %}
                                         <span class="text-muted">Not assigned</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if order.sales_percentage %}
-                                        <span class="badge bg-success">{{ order.sales_percentage }}%</span>
-                                    {% else %}
-                                        <span class="text-muted">-</span>
                                     {% endif %}
                                 </td>
                                 <td>
                                     {% if order.project_manager %}
-                                        <div class="d-flex align-items-center">
-                                            <div class="user-avatar me-2">
-                                                <div class="index-number" style="width: 30px; height: 30px; font-size: 0.7rem;">
-                                                    {{ order.project_manager.first_name|first|upper|default:order.project_manager.username|first|upper }}
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <div class="fw-semibold" style="font-size: 0.85rem;">
-                                                    {{ order.project_manager.get_full_name|default:order.project_manager.username }}
-                                                </div>
-                                            </div>
+                                        <div class="fw-semibold" style="font-size: 0.85rem;">
+                                            {{ order.project_manager.get_full_name|default:order.project_manager.username }}
                                         </div>
                                     {% else %}
                                         <span class="text-muted">Not assigned</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if order.project_manager_percentage %}
-                                        <span class="badge bg-info">{{ order.project_manager_percentage }}%</span>
-                                    {% else %}
-                                        <span class="text-muted">-</span>
                                     {% endif %}
                                 </td>
                                 <td>

@@ -58,6 +58,11 @@ urlpatterns = [
     
     # AJAX endpoints
     path('ajax/get-company-data/', views.get_company_data_ajax, name='get_company_data_ajax'),
+    
+    # Notification URLs
+    path('notifications/', views.notifications_view, name='notifications'),
+    path('ajax/notification-count/', views.get_notification_count, name='notification_count'),
+    path('ajax/cleanup-notifications/', views.cleanup_old_notifications_ajax, name='cleanup_notifications_ajax'),
     path('ajax/get-contact-data/', views.get_contact_data_ajax, name='get_contact_data_ajax'),
     path('ajax/get-purchase-orders-by-contact/', views.get_purchase_orders_by_contact_ajax, name='get_purchase_orders_by_contact_ajax'),
     path('ajax/get-purchase-order-details/', views.get_purchase_order_details_ajax, name='get_purchase_order_details_ajax'),
@@ -66,6 +71,8 @@ urlpatterns = [
     path('ajax/get-inquiry-items/', views.get_inquiry_items_ajax, name='get_inquiry_items_ajax'),
     path('ajax/process-po-pdf/', views.process_po_pdf_ajax, name='process_po_pdf_ajax'),
     path('upload-po-ajax/', views.upload_po_ajax, name='upload_po_ajax'),
+    path('test-mistral/', views.test_mistral_connection, name='test_mistral_connection'),
+    path('debug-dashboard/', views.debug_dashboard_data, name='debug_dashboard_data'),
     path('ajax/save-purchase-order-items/', views.save_purchase_order_items_ajax, name='save_purchase_order_items_ajax'),
     path('ajax/get-purchase-order-items/', views.get_purchase_order_items_ajax, name='get_purchase_order_items_ajax'),
     path('ajax/search-customers/', views.search_customers_ajax, name='search_customers_ajax'),

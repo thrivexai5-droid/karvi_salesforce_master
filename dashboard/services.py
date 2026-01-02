@@ -96,6 +96,13 @@ def extract_po_data_from_pdf(pdf_file):
     Extracts: po_number, po_date, material_code, material_description, quantity, net_value, delivery_date, payment_terms
     """
     try:
+        # Check if API key is configured
+        if not settings.MISTRAL_API_KEY or settings.MISTRAL_API_KEY == 'your-actual-mistral-api-key-here' or settings.MISTRAL_API_KEY == 'your-new-valid-mistral-api-key-here':
+            return {
+                'error': 'Mistral API key is not configured. Please add a valid MISTRAL_API_KEY to your .env file. Get one from: https://console.mistral.ai/',
+                'success': False
+            }
+        
         client = Mistral(api_key=settings.MISTRAL_API_KEY)
         
         # 1. OCR Process: Convert file to base64 and process
@@ -116,11 +123,23 @@ def extract_po_data_from_pdf(pdf_file):
 
     except Exception as ocr_error:
         print(f"OCR Error: {ocr_error}")
-        # If OCR fails, return error message
-        return {
-            'error': f'OCR processing failed: {str(ocr_error)}',
-            'success': False
-        }
+        # If OCR fails, return error message with specific details
+        error_msg = str(ocr_error)
+        if "401" in error_msg or "Unauthorized" in error_msg:
+            return {
+                'error': 'Mistral API key is invalid or expired. Please get a new API key from https://console.mistral.ai/ and update your .env file.',
+                'success': False
+            }
+        elif "403" in error_msg or "Forbidden" in error_msg:
+            return {
+                'error': 'Mistral API key does not have OCR permissions. Please check your API key permissions at https://console.mistral.ai/',
+                'success': False
+            }
+        else:
+            return {
+                'error': f'OCR processing failed: {str(ocr_error)}',
+                'success': False
+            }
 
     # 2. Field Extraction: Enhanced prompt for comprehensive PO data extraction
     try:

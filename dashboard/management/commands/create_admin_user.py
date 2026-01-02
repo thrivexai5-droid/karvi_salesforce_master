@@ -13,7 +13,7 @@ class Command(BaseCommand):
         first_name = 'Pranav'
         last_name = 'Parikhrole'
         phone = '7600053567'
-        password = 'Admin@1234'
+        password = 'Darshan@1234'
         
         try:
             # Check if user already exists

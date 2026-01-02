@@ -1,0 +1,72 @@
+{% extends 'dashboard/base.html' %}
+{% load static %}
+
+{% block title %}Notifications - Dashboard{% endblock %}
+
+{% block body_class %}scrollable-page{% endblock %}
+
+{% block content %}
+<div class="user-management-container">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div>
+            <h2 class="page-title">Notifications</h2>
+            <p class="page-subtitle">System notifications and alerts</p>
+        </div>
+    </div>
+
+    <!-- Notifications List -->
+    <div class="table-container">
+        <div class="table-header">
+            <h5 class="mb-0">Recent Notifications</h5>
+            <span class="text-muted">{{ total_count }} notification{{ total_count|pluralize }}</span>
+        </div>
+        
+        {% if notifications %}
+            <div class="list-group">
+                {% for notification in notifications %}
+                    <div class="list-group-item {% if not notification.is_read %}list-group-item-info{% endif %}">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">
+                                <i class="bi bi-{% if notification.notification_type == 'additional_supply' %}plus-circle text-success{% elif notification.notification_type == 'purchase_order' %}file-earmark text-primary{% elif notification.notification_type == 'invoice' %}receipt text-warning{% else %}file-text text-info{% endif %} me-2"></i>
+                                {{ notification.title }}
+                            </h6>
+                            <small class="text-muted">{{ notification.created_at|timesince }} ago</small>
+                        </div>
+                        <p class="mb-1">{{ notification.message }}</p>
+                        
+                        {% if notification.data %}
+                            <div class="notification-details mt-2">
+                                <small class="text-muted">
+                                    {% if notification.data.po_number %}
+                                        <strong>PO Number:</strong> {{ notification.data.po_number }} |
+                                    {% endif %}
+                                    {% if notification.data.customer %}
+                                        <strong>Customer:</strong> {{ notification.data.customer }} |
+                                    {% endif %}
+                                    {% if notification.data.company %}
+                                        <strong>Company:</strong> {{ notification.data.company }}
+                                    {% endif %}
+                                    {% if notification.data.amount %}
+                                        | <strong>Amount:</strong> ₹{{ notification.data.amount|floatformat:0 }}
+                                    {% endif %}
+                                </small>
+                            </div>
+                        {% endif %}
+                        
+                        <small class="text-muted">
+                            Created by: {{ notification.created_by.get_full_name|default:notification.created_by.username }}
+                        </small>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <i class="bi bi-bell text-muted"></i>
+                <h4 class="text-muted">No notifications</h4>
+                <p class="text-muted">You're all caught up! No new notifications at this time.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

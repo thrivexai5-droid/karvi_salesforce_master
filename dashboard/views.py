@@ -14,7 +14,7 @@ from datetime import datetime
 import json
 import base64
 import os
-from .models import UserProfile, Company, Contact, PurchaseOrder, PurchaseOrderItem, Invoice, InquiryHandler, InquiryItem, Quotation, AdditionalSupply
+from .models import UserProfile, Company, Contact, PurchaseOrder, PurchaseOrderItem, Invoice, InquiryHandler, InquiryItem, Quotation, AdditionalSupply, Notification
 from .password_storage import password_storage
 
 def increment_revision(current_revision):
@@ -50,6 +50,98 @@ except ImportError:
     MISTRAL_AVAILABLE = False
 
 @login_required
+def debug_dashboard_data(request):
+    """Debug endpoint to check dashboard data"""
+    try:
+        # Check purchase orders
+        po_count = PurchaseOrder.objects.count()
+        recent_pos = PurchaseOrder.objects.select_related('company__company').order_by('-order_date', '-id')[:5]
+        
+        # Check invoices
+        invoice_count = Invoice.objects.count()
+        recent_invoices = Invoice.objects.select_related('company__company').order_by('-invoice_date', '-id')[:5]
+        
+        # Check user role
+        user_role = request.user.userprofile.get_roles_list() if hasattr(request.user, 'userprofile') else 'No profile'
+        
+        debug_data = {
+            'user': request.user.username,
+            'user_role': user_role,
+            'purchase_orders': {
+                'count': po_count,
+                'recent': [
+                    {
+                        'po_number': po.po_number,
+                        'customer_name': po.customer_name,
+                        'company': po.company.company.company_name if po.company.company else po.company.customer_name,
+                        'order_date': po.order_date.strftime('%Y-%m-%d'),
+                        'due_days': po.due_days,
+                        'sales_person': po.sales_person.username if po.sales_person else None
+                    } for po in recent_pos
+                ]
+            },
+            'invoices': {
+                'count': invoice_count,
+                'recent': [
+                    {
+                        'invoice_number': inv.invoice_number,
+                        'company': inv.company.company.company_name if inv.company.company else inv.company.customer_name,
+                        'invoice_date': inv.invoice_date.strftime('%Y-%m-%d')
+                    } for inv in recent_invoices
+                ]
+            }
+        }
+        
+        return JsonResponse({
+            'success': True,
+            'data': debug_data
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })
+
+@login_required
+def test_mistral_connection(request):
+    """Test endpoint to verify Mistral API connection"""
+    try:
+        from mistralai import Mistral
+        from django.conf import settings
+        
+        # Check if API key is configured
+        if not settings.MISTRAL_API_KEY or settings.MISTRAL_API_KEY == 'your-actual-mistral-api-key-here':
+            return JsonResponse({
+                'success': False,
+                'error': 'Mistral API key is not configured properly'
+            })
+        
+        # Test simple API call
+        client = Mistral(api_key=settings.MISTRAL_API_KEY)
+        
+        # Simple test call
+        response = client.chat.complete(
+            model="mistral-medium-latest",
+            messages=[
+                {"role": "user", "content": "Hello, this is a test. Please respond with 'API connection successful'."}
+            ],
+            temperature=0
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Mistral API connection successful',
+            'response': response.choices[0].message.content
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Mistral API connection failed: {str(e)}'
+        })
+
+@login_required
 @csrf_exempt
 def upload_po_ajax(request):
     """AJAX endpoint that receives the PDF, calls the AI service, and returns JSON data to the frontend."""
@@ -58,8 +150,32 @@ def upload_po_ajax(request):
             # Import the service function
             from .services import extract_po_data_from_pdf
             
+            # Get the uploaded file
+            pdf_file = request.FILES['po_file']
+            
+            # Validate file type
+            if not pdf_file.name.lower().endswith('.pdf'):
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Please upload a PDF file only.'
+                })
+            
+            # Validate file size (5MB limit)
+            if pdf_file.size > 5 * 1024 * 1024:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'File size must be less than 5MB.'
+                })
+            
             # Call the service
-            extracted_data = extract_po_data_from_pdf(request.FILES['po_file'])
+            extracted_data = extract_po_data_from_pdf(pdf_file)
+            
+            # Check if extraction failed
+            if extracted_data.get('error'):
+                return JsonResponse({
+                    'success': False,
+                    'error': extracted_data['error']
+                })
             
             # Log extracted data for debugging (optional)
             import logging
@@ -67,8 +183,20 @@ def upload_po_ajax(request):
             logger.info(f"Extracted PO data: {extracted_data}")
             
             return JsonResponse({'success': True, 'data': extracted_data})
+            
+        except ImportError as e:
+            return JsonResponse({
+                'success': False, 
+                'error': f'Service import error: {str(e)}'
+            })
         except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)})
+            import traceback
+            error_details = traceback.format_exc()
+            print(f"AI Extraction Error: {error_details}")  # For debugging
+            return JsonResponse({
+                'success': False, 
+                'error': f'Error processing PDF: {str(e)}'
+            })
     
     return JsonResponse({'success': False, 'error': 'No file provided.'})
 
@@ -405,7 +533,7 @@ def dashboard_view(request):
         context.update(get_sales_dashboard_data(request.user))
     elif user_role == 'project_manager':
         # Project Manager - Focus on additional supplies and project tracking
-        context.update(get_project_manager_dashboard_data())
+        context.update(get_project_manager_dashboard_data(request.user))
     else:
         # Default - Basic dashboard
         context.update(get_basic_dashboard_data())
@@ -521,6 +649,21 @@ def get_full_dashboard_data():
         sustainability_status = "Healthy"
         sustainability_color = "success"
     
+    # Get recent invoices for the dashboard card (latest 10)
+    recent_invoices = Invoice.objects.select_related('company__company').order_by('-invoice_date', '-id')[:10]
+    
+    # Get recent purchase orders (all POs for admin/manager)
+    recent_purchase_orders = PurchaseOrder.objects.select_related('company__company').order_by('-order_date', '-id')[:10]
+    total_purchase_orders = PurchaseOrder.objects.count()
+    
+    # Get recent quotations (all quotations for admin/manager) - using InquiryHandler for running projects
+    recent_quotations = InquiryHandler.objects.select_related('company__company').exclude(
+        status__in=['Project Closed', 'Lost']
+    ).order_by('-date_of_quote')[:10]
+    total_quotations = InquiryHandler.objects.exclude(
+        status__in=['Project Closed', 'Lost']
+    ).count()
+    
     return {
         'dashboard_type': 'full',
         'max_date': max_date_formatted,
@@ -540,6 +683,12 @@ def get_full_dashboard_data():
         'paid_total_value': format_indian_currency(paid_total_value),
         'paid_total_value_raw': paid_total_value,
         'paid_invoices_count': paid_invoices_count,
+        'recent_invoices': recent_invoices,
+        'recent_purchase_orders': recent_purchase_orders,
+        'total_purchase_orders': total_purchase_orders,
+        'recent_quotations': recent_quotations,
+        'total_quotations': total_quotations,
+        'is_user_specific': False,
         'inquiry_chart_data': inquiry_chart_data,
     }
 
@@ -547,6 +696,8 @@ def get_full_dashboard_data():
 def get_sales_dashboard_data(user=None):
     """Get sales-focused dashboard data - filtered by user if provided"""
     from decimal import Decimal
+    from django.db.models import Sum, F, DecimalField
+    from django.db.models.functions import Coalesce
     import json
     
     def format_indian_currency(amount):
@@ -557,21 +708,54 @@ def get_sales_dashboard_data(user=None):
     
     # Filter inquiries by user if provided (for sales users)
     if user and user.userprofile.get_roles_list() == 'sales':
-        # Sales user - only their assigned inquiries
+        # Sales user - only their assigned inquiries and POs
         inquiry_filter = {'sales': user}
+        po_filter = {'sales_person': user}
         total_inquiries = InquiryHandler.objects.filter(sales=user).count()
         active_inquiries = InquiryHandler.objects.filter(sales=user).exclude(status__in=['Project Closed', 'Lost']).count()
         quotations_sent = InquiryHandler.objects.filter(sales=user, status='Quotation').count()
+        is_user_specific = True
     else:
-        # Admin or no user specified - all inquiries
+        # Admin or no user specified - all inquiries and POs
         inquiry_filter = {}
+        po_filter = {}
         total_inquiries = InquiryHandler.objects.count()
         active_inquiries = InquiryHandler.objects.exclude(status__in=['Project Closed', 'Lost']).count()
         quotations_sent = InquiryHandler.objects.filter(status='Quotation').count()
+        is_user_specific = False
     
     # Invoice metrics for sales (all invoices for now - can be filtered later if needed)
     total_invoices = Invoice.objects.count()
     pending_invoices = Invoice.objects.exclude(status='paid').count()
+    
+    # Get recent invoices for the dashboard card (latest 10)
+    recent_invoices = Invoice.objects.select_related('company__company').order_by('-invoice_date', '-id')[:10]
+    
+    # Get recent purchase orders (role-based filtering)
+    recent_purchase_orders = PurchaseOrder.objects.select_related('company__company').filter(**po_filter).order_by('-order_date', '-id')[:10]
+    total_purchase_orders = PurchaseOrder.objects.filter(**po_filter).count()
+    
+    # Get recent quotations (role-based filtering) - using InquiryHandler for running projects
+    if user and user.userprofile.get_roles_list() == 'sales':
+        # Sales user - only their assigned inquiries, excluding closed/lost projects
+        recent_quotations = InquiryHandler.objects.select_related('company__company').filter(
+            sales=user
+        ).exclude(
+            status__in=['Project Closed', 'Lost']
+        ).order_by('-date_of_quote')[:10]
+        total_quotations = InquiryHandler.objects.filter(
+            sales=user
+        ).exclude(
+            status__in=['Project Closed', 'Lost']
+        ).count()
+    else:
+        # Admin or no user specified - all inquiries, excluding closed/lost projects
+        recent_quotations = InquiryHandler.objects.select_related('company__company').exclude(
+            status__in=['Project Closed', 'Lost']
+        ).order_by('-date_of_quote')[:10]
+        total_quotations = InquiryHandler.objects.exclude(
+            status__in=['Project Closed', 'Lost']
+        ).count()
     
     # Sales-specific inquiry status chart (filtered by user if applicable)
     sales_statuses = ['Enquiry', 'Inputs', 'Quotation', 'Negotiation', 'PO-Confirm', 'Lost']
@@ -587,6 +771,33 @@ def get_sales_dashboard_data(user=None):
         'data': json.dumps([sales_status_counts[status] for status in sales_statuses])
     }
     
+    # Calculate Total Payment: Sum of (Order Value × Sales Percentage) for user's POs
+    
+    # Calculate total payment based on sales percentage
+    if user and user.userprofile.get_roles_list() == 'sales':
+        # For sales users - only their assigned POs
+        total_payment_result = PurchaseOrder.objects.filter(
+            sales_person=user,
+            sales_percentage__isnull=False  # Only include POs with sales percentage
+        ).aggregate(
+            total_payment=Sum(
+                F('order_value') * F('sales_percentage') / 100,
+                output_field=DecimalField(max_digits=15, decimal_places=2)
+            )
+        )
+    else:
+        # For admin/manager - all POs with sales percentage
+        total_payment_result = PurchaseOrder.objects.filter(
+            sales_percentage__isnull=False  # Only include POs with sales percentage
+        ).aggregate(
+            total_payment=Sum(
+                F('order_value') * F('sales_percentage') / 100,
+                output_field=DecimalField(max_digits=15, decimal_places=2)
+            )
+        )
+    
+    total_payment = total_payment_result['total_payment'] or Decimal('0')
+    
     return {
         'dashboard_type': 'sales',
         'total_inquiries': total_inquiries,
@@ -594,14 +805,23 @@ def get_sales_dashboard_data(user=None):
         'quotations_sent': quotations_sent,
         'total_invoices': total_invoices,
         'pending_invoices': pending_invoices,
+        'recent_invoices': recent_invoices,
+        'recent_purchase_orders': recent_purchase_orders,
+        'total_purchase_orders': total_purchase_orders,
+        'recent_quotations': recent_quotations,
+        'total_quotations': total_quotations,
         'sales_chart_data': sales_chart_data,
-        'is_user_specific': bool(user and user.userprofile.get_roles_list() == 'sales'),
+        'is_user_specific': is_user_specific,
+        'total_payment': format_indian_currency(total_payment),
+        'total_payment_raw': total_payment,
     }
 
 
-def get_project_manager_dashboard_data():
+def get_project_manager_dashboard_data(user=None):
     """Get project manager-focused dashboard data"""
     from decimal import Decimal
+    from django.db.models import Sum, F, DecimalField
+    from django.db.models.functions import Coalesce
     
     def format_indian_currency(amount):
         if amount == 0:
@@ -609,9 +829,45 @@ def get_project_manager_dashboard_data():
         amount_float = float(amount)
         return f"{amount_float:,.0f}"
     
-    # Project management metrics
-    total_additional_supplies = AdditionalSupply.objects.count()
-    total_supply_value = AdditionalSupply.objects.aggregate(total=Sum('total_amount'))['total'] or Decimal('0')
+    # Project management metrics and recent additional supplies - filter by project manager if user is provided
+    if user and user.userprofile.get_roles_list() == 'project_manager':
+        # Filter Additional Supplies by:
+        # 1. Invoice must be generated/active (not draft)
+        # 2. PO must be assigned to this project manager
+        total_additional_supplies = AdditionalSupply.objects.filter(
+            invoice__status__in=['sent', 'invoiced', 'paid', 'partial'],  # Only generated invoices
+            invoice__purchase_order__project_manager=user  # Only POs assigned to this PM
+        ).count()
+        
+        total_supply_value = AdditionalSupply.objects.filter(
+            invoice__status__in=['sent', 'invoiced', 'paid', 'partial'],  # Only generated invoices
+            invoice__purchase_order__project_manager=user  # Only POs assigned to this PM
+        ).aggregate(total=Sum('total_amount'))['total'] or Decimal('0')
+        
+        # Recent additional supplies for this project manager (with both conditions)
+        recent_supplies = AdditionalSupply.objects.select_related(
+            'invoice__purchase_order', 
+            'invoice__company__company'
+        ).filter(
+            invoice__status__in=['sent', 'invoiced', 'paid', 'partial'],  # Only generated invoices
+            invoice__purchase_order__project_manager=user  # Only POs assigned to this PM
+        ).order_by('-created_at')[:5]
+    else:
+        # Show all Additional Supplies from generated invoices (for admin/manager or fallback)
+        total_additional_supplies = AdditionalSupply.objects.filter(
+            invoice__status__in=['sent', 'invoiced', 'paid', 'partial']  # Only generated invoices
+        ).count()
+        total_supply_value = AdditionalSupply.objects.filter(
+            invoice__status__in=['sent', 'invoiced', 'paid', 'partial']  # Only generated invoices
+        ).aggregate(total=Sum('total_amount'))['total'] or Decimal('0')
+        
+        # Recent additional supplies from generated invoices
+        recent_supplies = AdditionalSupply.objects.select_related(
+            'invoice__purchase_order', 
+            'invoice__company__company'
+        ).filter(
+            invoice__status__in=['sent', 'invoiced', 'paid', 'partial']  # Only generated invoices
+        ).order_by('-created_at')[:5]
     
     # Project status from inquiries
     project_statuses = ['Design', 'Design Review', 'Manufacturing', 'Stage-Inspection', 'Dispatch']
@@ -619,8 +875,94 @@ def get_project_manager_dashboard_data():
     for status in project_statuses:
         project_counts[status] = InquiryHandler.objects.filter(status=status).count()
     
-    # Recent additional supplies
-    recent_supplies = AdditionalSupply.objects.select_related('invoice').order_by('-created_at')[:5]
+    # Get recent invoices - filter by project manager if user is provided
+    if user and user.userprofile.get_roles_list() == 'project_manager':
+        # Filter invoices by:
+        # 1. Invoice must be generated/active (not draft)
+        # 2. PO must be assigned to this project manager
+        recent_invoices = Invoice.objects.select_related('company__company', 'purchase_order').filter(
+            status__in=['sent', 'invoiced', 'paid', 'partial'],  # Only generated invoices
+            purchase_order__project_manager=user  # Only POs assigned to this PM
+        ).order_by('-invoice_date', '-id')[:10]
+        total_invoices = Invoice.objects.filter(
+            status__in=['sent', 'invoiced', 'paid', 'partial'],  # Only generated invoices
+            purchase_order__project_manager=user  # Only POs assigned to this PM
+        ).count()
+    else:
+        # Show all generated invoices (for admin/manager or fallback)
+        recent_invoices = Invoice.objects.select_related('company__company', 'purchase_order').filter(
+            status__in=['sent', 'invoiced', 'paid', 'partial']  # Only generated invoices
+        ).order_by('-invoice_date', '-id')[:10]
+        total_invoices = Invoice.objects.filter(
+            status__in=['sent', 'invoiced', 'paid', 'partial']  # Only generated invoices
+        ).count()
+    
+    # Get recent purchase orders - filter by project manager if user is provided
+    if user and user.userprofile.get_roles_list() == 'project_manager':
+        # Filter POs assigned to this project manager
+        recent_purchase_orders = PurchaseOrder.objects.select_related('company__company').filter(
+            project_manager=user
+        ).order_by('-order_date', '-id')[:10]
+        total_purchase_orders = PurchaseOrder.objects.filter(project_manager=user).count()
+        is_user_specific = True
+    else:
+        # Show all POs (for admin/manager or fallback)
+        recent_purchase_orders = PurchaseOrder.objects.select_related('company__company').order_by('-order_date', '-id')[:10]
+        total_purchase_orders = PurchaseOrder.objects.count()
+        is_user_specific = False
+    
+    # Get recent quotations - filter by project manager if user is provided
+    if user and user.userprofile.get_roles_list() == 'project_manager':
+        # Get companies that have POs assigned to this project manager
+        pm_companies = PurchaseOrder.objects.filter(project_manager=user).values_list('company', flat=True)
+        
+        # Filter quotations for companies that have POs assigned to this PM
+        recent_quotations = InquiryHandler.objects.select_related('company__company').filter(
+            company__in=pm_companies
+        ).exclude(
+            status__in=['Project Closed', 'Lost']
+        ).order_by('-date_of_quote')[:10]
+        
+        total_quotations = InquiryHandler.objects.filter(
+            company__in=pm_companies
+        ).exclude(
+            status__in=['Project Closed', 'Lost']
+        ).count()
+    else:
+        # Show all quotations (for admin/manager or fallback)
+        recent_quotations = InquiryHandler.objects.select_related('company__company').exclude(
+            status__in=['Project Closed', 'Lost']
+        ).order_by('-date_of_quote')[:10]
+        total_quotations = InquiryHandler.objects.exclude(
+            status__in=['Project Closed', 'Lost']
+        ).count()
+    
+    # Calculate Total Payment: Sum of (Order Value × Project Manager Percentage) for user's POs
+    
+    # Calculate total payment based on project manager percentage
+    if user and user.userprofile.get_roles_list() == 'project_manager':
+        # For project manager users - only their assigned POs
+        total_payment_result = PurchaseOrder.objects.filter(
+            project_manager=user,
+            project_manager_percentage__isnull=False  # Only include POs with project manager percentage
+        ).aggregate(
+            total_payment=Sum(
+                F('order_value') * F('project_manager_percentage') / 100,
+                output_field=DecimalField(max_digits=15, decimal_places=2)
+            )
+        )
+    else:
+        # For admin/manager - all POs with project manager percentage
+        total_payment_result = PurchaseOrder.objects.filter(
+            project_manager_percentage__isnull=False  # Only include POs with project manager percentage
+        ).aggregate(
+            total_payment=Sum(
+                F('order_value') * F('project_manager_percentage') / 100,
+                output_field=DecimalField(max_digits=15, decimal_places=2)
+            )
+        )
+    
+    total_payment = total_payment_result['total_payment'] or Decimal('0')
     
     return {
         'dashboard_type': 'project_manager',
@@ -628,6 +970,15 @@ def get_project_manager_dashboard_data():
         'total_supply_value': format_indian_currency(total_supply_value),
         'project_counts': project_counts,
         'recent_supplies': recent_supplies,
+        'recent_invoices': recent_invoices,
+        'total_invoices': total_invoices,
+        'recent_purchase_orders': recent_purchase_orders,
+        'total_purchase_orders': total_purchase_orders,
+        'recent_quotations': recent_quotations,
+        'total_quotations': total_quotations,
+        'is_user_specific': is_user_specific,
+        'total_payment': format_indian_currency(total_payment),
+        'total_payment_raw': total_payment,
     }
 
 
@@ -2373,29 +2724,40 @@ class AdditionalSupplyForm(forms.ModelForm):
         }
     
     def __init__(self, *args, **kwargs):
+        # Extract user from kwargs if provided
+        user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         
         # Get invoices that don't have additional supplies yet
         invoices_with_supplies = AdditionalSupply.objects.values_list('invoice_id', flat=True).distinct()
         
+        # Base queryset for invoices
+        base_queryset = Invoice.objects.filter(
+            invoice_number__isnull=False
+        ).exclude(invoice_number='').select_related('company', 'purchase_order')
+        
+        # Apply role-based filtering
+        if user and hasattr(user, 'userprofile') and user.userprofile.get_roles_list() == 'project_manager':
+            # Filter invoices to only show those from POs allocated to this project manager
+            base_queryset = base_queryset.filter(
+                purchase_order__project_manager=user,
+                status__in=['sent', 'invoiced', 'paid', 'partial']  # Only generated invoices
+            )
+        
         if self.instance and self.instance.pk and self.instance.invoice:
             # If editing, include the current invoice even if it has supplies
             from django.db.models import Q
-            self.fields['invoice_select'].queryset = Invoice.objects.filter(
-                invoice_number__isnull=False
-            ).exclude(invoice_number='').filter(
+            self.fields['invoice_select'].queryset = base_queryset.filter(
                 Q(id=self.instance.invoice.id) |  # Include current invoice
                 ~Q(id__in=invoices_with_supplies)  # Exclude invoices with supplies
-            ).select_related('company', 'purchase_order').order_by('-created_at')
+            ).order_by('-created_at')
             
             self.fields['invoice_select'].initial = self.instance.invoice
         else:
             # For new forms, exclude all invoices that already have additional supplies
-            self.fields['invoice_select'].queryset = Invoice.objects.filter(
-                invoice_number__isnull=False
-            ).exclude(invoice_number='').exclude(
+            self.fields['invoice_select'].queryset = base_queryset.exclude(
                 id__in=invoices_with_supplies
-            ).select_related('company', 'purchase_order').order_by('-created_at')
+            ).order_by('-created_at')
 
 @login_required
 def additional_supply_management_view(request):
@@ -2453,7 +2815,7 @@ def additional_supply_management_view(request):
 def additional_supply_create_view(request):
     """Create new additional supply with multiple items"""
     if request.method == 'POST':
-        form = AdditionalSupplyForm(request.POST)
+        form = AdditionalSupplyForm(request.POST, user=request.user)
         
         if form.is_valid():
             # Get the selected invoice
@@ -2480,7 +2842,7 @@ def additional_supply_create_view(request):
                             
                             # Create additional supply item
                             from datetime import date
-                            AdditionalSupply.objects.create(
+                            additional_supply = AdditionalSupply.objects.create(
                                 invoice=selected_invoice,
                                 supply_date=date.today(),
                                 description=description,
@@ -2488,6 +2850,23 @@ def additional_supply_create_view(request):
                                 unit_price=unit_price,
                                 remarks=remarks
                             )
+                            
+                            # Create notification for admin dashboard
+                            Notification.objects.create(
+                                notification_type='additional_supply',
+                                title='New Additional Supply Created',
+                                message=f'Additional Supply "{description}" created for {selected_invoice.company.company.company_name if selected_invoice.company.company else selected_invoice.company.customer_name}',
+                                data={
+                                    'po_number': selected_invoice.purchase_order.po_number if selected_invoice.purchase_order else 'N/A',
+                                    'customer': selected_invoice.customer_name,
+                                    'company': selected_invoice.company.company.company_name if selected_invoice.company.company else selected_invoice.company.customer_name,
+                                    'invoice_number': selected_invoice.invoice_number,
+                                    'amount': float(additional_supply.total_amount),
+                                    'description': description
+                                },
+                                created_by=request.user
+                            )
+                            
                             items_created += 1
                         except (ValueError, TypeError):
                             messages.error(request, f'Invalid quantity or unit price for item: {description}')
@@ -2503,7 +2882,7 @@ def additional_supply_create_view(request):
                 for error in errors:
                     messages.error(request, f'{field}: {error}')
     else:
-        form = AdditionalSupplyForm()
+        form = AdditionalSupplyForm(user=request.user)
     
     return render(request, 'dashboard/additional_supply_form.html', {
         'form': form,
@@ -2517,7 +2896,7 @@ def additional_supply_edit_view(request, supply_id):
     additional_supply = get_object_or_404(AdditionalSupply, id=supply_id)
     
     if request.method == 'POST':
-        form = AdditionalSupplyForm(request.POST, instance=additional_supply)
+        form = AdditionalSupplyForm(request.POST, instance=additional_supply, user=request.user)
         
         if form.is_valid():
             # Get the selected invoice
@@ -2570,7 +2949,7 @@ def additional_supply_edit_view(request, supply_id):
                 for error in errors:
                     messages.error(request, f'{field}: {error}')
     else:
-        form = AdditionalSupplyForm(instance=additional_supply)
+        form = AdditionalSupplyForm(instance=additional_supply, user=request.user)
     
     # Get all additional supplies for the same invoice to populate the table
     existing_supplies = AdditionalSupply.objects.filter(
@@ -4661,3 +5040,74 @@ def simple_search_test_view(request):
     return render(request, 'dashboard/simple_search_test.html', {
         'title': 'Simple Search Test - Working Fix'
     })
+
+@login_required
+def notifications_view(request):
+    """Display notifications for admin users"""
+    from django.utils import timezone
+    from datetime import timedelta
+    
+    # Only show notifications to admin/manager users
+    if not (hasattr(request.user, 'userprofile') and request.user.userprofile.get_roles_list() in ['admin', 'manager']):
+        messages.error(request, 'Access denied. Only administrators can view notifications.')
+        return redirect('dashboard:dashboard')
+    
+    # Get notifications from the last 48 hours only, ordered by newest first
+    cutoff_time = timezone.now() - timedelta(hours=48)
+    notifications = Notification.objects.filter(created_at__gte=cutoff_time).order_by('-created_at')
+    
+    # Mark notifications as read when viewed
+    unread_notifications = notifications.filter(is_read=False)
+    unread_notifications.update(is_read=True)
+    
+    return render(request, 'dashboard/notifications.html', {
+        'notifications': notifications,
+        'total_count': notifications.count(),
+    })
+
+@login_required
+def get_notification_count(request):
+    """AJAX endpoint to get unread notification count"""
+    from django.utils import timezone
+    from datetime import timedelta
+    
+    if not (hasattr(request.user, 'userprofile') and request.user.userprofile.get_roles_list() in ['admin', 'manager']):
+        return JsonResponse({'count': 0})
+    
+    # Only count notifications from the last 48 hours
+    cutoff_time = timezone.now() - timedelta(hours=48)
+    unread_count = Notification.objects.filter(
+        is_read=False,
+        created_at__gte=cutoff_time
+    ).count()
+    return JsonResponse({'count': unread_count})
+
+@login_required
+def cleanup_old_notifications_ajax(request):
+    """AJAX endpoint to clean up notifications older than 48 hours"""
+    from django.utils import timezone
+    from datetime import timedelta
+    
+    # Only allow admin/manager users to trigger cleanup
+    if not (hasattr(request.user, 'userprofile') and request.user.userprofile.get_roles_list() in ['admin', 'manager']):
+        return JsonResponse({'success': False, 'error': 'Access denied'})
+    
+    try:
+        # Calculate the cutoff time (1 minute ago for testing)
+        cutoff_time = timezone.now() - timedelta(minutes=1)
+        
+        # Find and delete old notifications
+        old_notifications = Notification.objects.filter(created_at__lt=cutoff_time)
+        deleted_count, _ = old_notifications.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'deleted_count': deleted_count,
+            'message': f'Cleaned up {deleted_count} old notifications'
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })
