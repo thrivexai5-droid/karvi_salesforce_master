@@ -3168,6 +3168,7 @@ def fetch_quotation_data_ajax(request):
             return JsonResponse({'success': False, 'error': f'Error fetching data: {str(e)}'})
     
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
+    
 from django.conf import settings
 from docx import Document
 from docx.enum.text import WD_COLOR_INDEX
@@ -3240,7 +3241,7 @@ def seek_and_replace(doc, replacements):
     
     # Replace in tables
     for table_idx, table in enumerate(doc.tables):
-        is_pricing_table = (table_idx == 1)  # Second table is the pricing table
+        is_pricing_table = (table_idx == 2)  # Third table is the pricing table (index 2)
         replace_in_table(table, replacements, is_pricing_table)
     
     # Replace in headers and footers
@@ -3251,6 +3252,87 @@ def seek_and_replace(doc, replacements):
             replace_in_paragraph(para, replacements)
     
     print(f"Text replacements completed for {len(replacements)} items")
+    return doc
+
+def handle_product_image_tags(doc, fixtures):
+    """Handle <product_image> and <product_image_X> tags by inserting actual images"""
+    
+    def replace_image_tag_in_paragraph(paragraph, tag, image_bytes):
+        """Replace image tag with actual image in paragraph"""
+        if tag in paragraph.text and image_bytes:
+            try:
+                # Clear the paragraph
+                paragraph.clear()
+                
+                # Add the image
+                run = paragraph.add_run()
+                img_stream = BytesIO(image_bytes)
+                img_stream.seek(0)
+                run.add_picture(img_stream, width=Mm(IMAGE_WIDTH_MM))
+                
+                # Center the paragraph
+                from docx.enum.text import WD_ALIGN_PARAGRAPH
+                paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                
+                print(f"✅ Replaced {tag} with image in paragraph")
+                return True
+            except Exception as e:
+                print(f"❌ Error replacing {tag} with image: {e}")
+                # Fallback to placeholder text
+                paragraph.clear()
+                paragraph.add_run(f"[Image: Product {tag}]")
+                return False
+        return False
+    
+    def replace_image_tag_in_table_cell(cell, tag, image_bytes):
+        """Replace image tag with actual image in table cell"""
+        if tag in cell.text and image_bytes:
+            return _insert_image_in_cell(cell, image_bytes)
+        return False
+    
+    # Process each fixture and its image tags
+    for idx, fixture in enumerate(fixtures):
+        sr_no = idx + 1
+        image_bytes = fixture.get('image')
+        
+        if not image_bytes:
+            continue
+            
+        # Tags to look for
+        numbered_tag = f"<product_image_{sr_no}>"
+        generic_tag = "<product_image>" if idx == 0 else None  # Only first product gets generic tag
+        
+        tags_to_process = [numbered_tag]
+        if generic_tag:
+            tags_to_process.append(generic_tag)
+        
+        # Replace in all paragraphs
+        for para in doc.paragraphs:
+            for tag in tags_to_process:
+                replace_image_tag_in_paragraph(para, tag, image_bytes)
+        
+        # Replace in all tables
+        for table in doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    for tag in tags_to_process:
+                        replace_image_tag_in_table_cell(cell, tag, image_bytes)
+                    
+                    # Also check paragraphs within cells
+                    for para in cell.paragraphs:
+                        for tag in tags_to_process:
+                            replace_image_tag_in_paragraph(para, tag, image_bytes)
+        
+        # Replace in headers and footers
+        for section in doc.sections:
+            for para in section.header.paragraphs:
+                for tag in tags_to_process:
+                    replace_image_tag_in_paragraph(para, tag, image_bytes)
+            for para in section.footer.paragraphs:
+                for tag in tags_to_process:
+                    replace_image_tag_in_paragraph(para, tag, image_bytes)
+    
+    print(f"Product image tag processing completed for {len(fixtures)} fixtures")
     return doc
 
 def _insert_image_in_cell(cell, image_bytes):
@@ -3339,11 +3421,11 @@ def _insert_image_in_cell(cell, image_bytes):
         return False
 
 def add_fixture_rows_to_table(table, fixtures_data):
-    """Add additional fixture rows dynamically for fixtures beyond the first 2"""
-    if len(fixtures_data) <= 2:
+    """Add additional fixture rows dynamically for fixtures beyond the first 1"""
+    if len(fixtures_data) <= 1:
         return  # No additional rows needed
     
-    print(f"=== ADDING ROWS FOR {len(fixtures_data) - 2} ADDITIONAL FIXTURES ===")
+    print(f"=== ADDING ROWS FOR {len(fixtures_data) - 1} ADDITIONAL FIXTURES ===")
     
     # Find column positions from header
     column_positions = {}
@@ -3377,7 +3459,7 @@ def add_fixture_rows_to_table(table, fixtures_data):
     # Insert position should be at the end of existing rows
     insert_position = len(table.rows)
     
-    for idx in range(2, len(fixtures_data)):  # Start from 3rd fixture
+    for idx in range(1, len(fixtures_data)):  # Start from 2nd fixture (index 1)
         fixture = fixtures_data[idx]
         
         print(f"Adding fixture {idx + 1}")
@@ -3470,7 +3552,7 @@ def add_fixture_rows_to_table(table, fixtures_data):
             except Exception as e:
                 print(f"Error setting words text for fixture {idx + 1}: {e}")
     
-    print(f"=== COMPLETED ADDING {len(fixtures_data) - 2} ADDITIONAL FIXTURES ===")
+    print(f"=== COMPLETED ADDING {len(fixtures_data) - 1} ADDITIONAL FIXTURES ===")
 
 def _clone_row_at_position(table, source_row, insert_position):
     """Clone a complete row with all cell properties and merged cells at specific position"""
@@ -3528,34 +3610,26 @@ def populate_pricing_table_with_fixtures(table, fixtures_data):
     
     print(f"Column positions found: {column_positions}")
     
-    # STEP 2: Find ALL fixture rows dynamically (not just first 2)
+    # STEP 2: Always populate the first product row (row 1) and find additional fixture rows
     fixture_rows = []
-    for r_idx in range(1, len(table.rows)):  # Skip header row
+    
+    # Always include row 1 as the first product row
+    if len(table.rows) > 1:
+        fixture_rows.append((1, 0))  # Row 1, Fixture 0
+        print(f"Using template row 1 for Fixture 1")
+    
+    # Look for additional fixture rows (beyond the template)
+    for r_idx in range(2, len(table.rows)):  # Start from row 2 (skip header and first product)
         row = table.rows[r_idx]
         row_text = " ".join([cell.text.strip() for cell in row.cells]).lower()
         
-        # Check for any fixture pattern
-        if "fixture" in row_text and ("holding" in row_text or "pulling" in row_text or "connector" in row_text or "pcba" in row_text):
-            # Try to determine fixture number from the row
-            fixture_num = None
-            if "fixture 1" in row_text or "holding" in row_text:
-                fixture_num = 0
-            elif "fixture 2" in row_text or "pulling" in row_text:
-                fixture_num = 1
-            else:
-                # For fixtures beyond 2, try to extract number or assign sequentially
-                for i in range(len(fixtures_data)):
-                    if f"fixture {i+1}" in row_text:
-                        fixture_num = i
-                        break
-                
-                # If still not found, assign based on order
-                if fixture_num is None:
-                    fixture_num = len(fixture_rows)
-            
-            if fixture_num is not None and fixture_num < len(fixtures_data):
+        # Check for any fixture pattern or if it's a data row (not words row)
+        if not ("in words:" in row_text):
+            # This might be an additional fixture row
+            fixture_num = len(fixture_rows)  # Assign next fixture number
+            if fixture_num < len(fixtures_data):
                 fixture_rows.append((r_idx, fixture_num))
-                print(f"Found Fixture {fixture_num + 1} at row {r_idx}")
+                print(f"Found additional fixture row at {r_idx} for Fixture {fixture_num + 1}")
     
     print(f"Found {len(fixture_rows)} fixture rows for {len(fixtures_data)} fixtures")
     
@@ -3888,6 +3962,95 @@ def quotation_view(request):
         'draft_data_json': draft_data_json
     })
 
+def handle_multiple_products_in_sections(doc, fixtures):
+    """Handle multiple products by duplicating product sections in inclusion and scope areas"""
+    if len(fixtures) <= 1:
+        return  # No need to duplicate for single product
+    
+    try:
+        print(f"=== HANDLING MULTIPLE PRODUCTS: {len(fixtures)} products ===")
+        
+        # Find and duplicate inclusion section products
+        inclusion_paragraphs = []
+        scope_paragraphs = []
+        
+        for i, paragraph in enumerate(doc.paragraphs):
+            text = paragraph.text.strip()
+            
+            # Look for inclusion section product pattern
+            if '<sr_no>. <product_name>: <product_description>' in text:
+                # Check if this is in inclusion section (before "Exclusions")
+                is_inclusion = True
+                for j in range(i):
+                    if 'Exclusions:' in doc.paragraphs[j].text:
+                        is_inclusion = False
+                        break
+                
+                if is_inclusion:
+                    inclusion_paragraphs.append(i)
+                    print(f"Found inclusion product paragraph at index {i}")
+                else:
+                    scope_paragraphs.append(i)
+                    print(f"Found scope product paragraph at index {i}")
+        
+        # Duplicate inclusion section products
+        if inclusion_paragraphs:
+            base_inclusion_idx = inclusion_paragraphs[0]
+            # Find the specifications paragraph (should be 2 paragraphs after)
+            spec_inclusion_idx = base_inclusion_idx + 2
+            
+            # Insert additional products after the first one
+            insert_position = spec_inclusion_idx + 1
+            
+            for fixture_idx in range(1, len(fixtures)):  # Start from second fixture
+                fixture = fixtures[fixture_idx]
+                sr_no = fixture_idx + 1
+                
+                # Create product line
+                product_para = doc.paragraphs[base_inclusion_idx]._element
+                new_product_para = doc.add_paragraph()
+                new_product_para.text = f"{sr_no}. {fixture.get('name', '')}: {fixture.get('desc', '')}"
+                
+                # Create image placeholder
+                new_image_para = doc.add_paragraph()
+                new_image_para.text = f"<product_image_{sr_no}>"
+                
+                # Create specifications line
+                new_spec_para = doc.add_paragraph()
+                new_spec_para.text = f"Specifications: {fixture.get('specifications', '')}"
+                
+                print(f"Added inclusion section for product {sr_no}")
+        
+        # Duplicate scope section products
+        if scope_paragraphs:
+            base_scope_idx = scope_paragraphs[0]
+            spec_scope_idx = base_scope_idx + 2
+            
+            for fixture_idx in range(1, len(fixtures)):  # Start from second fixture
+                fixture = fixtures[fixture_idx]
+                sr_no = fixture_idx + 1
+                
+                # Create product line
+                new_product_para = doc.add_paragraph()
+                new_product_para.text = f"{sr_no}. {fixture.get('name', '')}: {fixture.get('desc', '')}"
+                
+                # Create image placeholder
+                new_image_para = doc.add_paragraph()
+                new_image_para.text = f"<product_image_{sr_no}>"
+                
+                # Create specifications line
+                new_spec_para = doc.add_paragraph()
+                new_spec_para.text = f"Specifications: {fixture.get('specifications', '')}"
+                
+                print(f"Added scope section for product {sr_no}")
+        
+        print("=== MULTIPLE PRODUCTS HANDLING COMPLETE ===")
+        
+    except Exception as e:
+        print(f"Error handling multiple products: {e}")
+        import traceback
+        traceback.print_exc()
+
 @login_required
 def generate_quotation(request):
     """Generate quotation document with proper image handling and specifications"""
@@ -3909,10 +4072,17 @@ def generate_quotation(request):
             fixtures = []
             fixture_index = 0
             
+            print("=== FIXTURE PROCESSING DEBUG ===")
+            print(f"POST keys containing 'fixtures': {[k for k in request.POST.keys() if 'fixtures' in k]}")
+            
             while True:
                 name_key = f'fixtures[{fixture_index}][name]'
                 if name_key not in request.POST:
                     break
+                    
+                print(f"Processing fixture {fixture_index + 1}:")
+                print(f"  Name: '{request.POST.get(name_key, '')}'")
+                print(f"  Desc: '{request.POST.get(f'fixtures[{fixture_index}][desc]', '')}'")
                     
                 fixture = {
                     'name': request.POST.get(name_key, ''),
@@ -3946,11 +4116,18 @@ def generate_quotation(request):
                 fixtures.append(fixture)
                 fixture_index += 1
             
-            # Ensure we have at least 2 fixtures for template compatibility
-            while len(fixtures) < 2:
+            print(f"=== TOTAL FIXTURES PROCESSED: {len(fixtures)} ===")
+            for i, f in enumerate(fixtures):
+                print(f"  Fixture {i+1}: '{f['name']}' - '{f['desc']}'")
+            print("=== END FIXTURE PROCESSING ===")
+            
+            # CRITICAL: Do NOT pad with empty fixtures if we have real data
+            # Only ensure minimum if no fixtures were processed at all
+            if len(fixtures) == 0:
+                print("WARNING: No fixtures found, adding default fixture")
                 fixtures.append({
-                    'name': f'Fixture {len(fixtures) + 1}',
-                    'desc': '',
+                    'name': 'Default Fixture',
+                    'desc': 'Default Description',
                     'hsn': '84790000',
                     'qty': '1',
                     'unit': 'Set',
@@ -3961,6 +4138,8 @@ def generate_quotation(request):
                     'has_image': False,
                     'image': None,
                 })
+            
+            print(f"=== FINAL FIXTURES COUNT: {len(fixtures)} ===")
             
             # Build content for tag-based replacements with enhanced inclusion section
             inclusion_items = []
@@ -4099,7 +4278,7 @@ def generate_quotation(request):
             # Load template
             from pathlib import Path
             BASE_DIR = Path(__file__).resolve().parent.parent
-            template_path = os.path.join(BASE_DIR, 'Quote KEC005JN2025 RevA - new format full_1.docx')
+            template_path = os.path.join(BASE_DIR, 'Quote Format.docx')
             
             # Check if template exists, if not create a basic one
             if not os.path.exists(template_path):
@@ -4170,7 +4349,7 @@ def generate_quotation(request):
                 row1[5].text = '26,879/-'
                 
                 row2 = table.rows[2].cells
-                for cell in row2.cells:
+                for cell in row2:
                     cell.text = 'In Words: Twenty-Six Thousand Eight Hundred Seventy-Nine INR Only PER EACH'
                 
                 row3 = table.rows[3].cells
@@ -4182,63 +4361,111 @@ def generate_quotation(request):
                 row3[5].text = '29,546/-'
                 
                 row4 = table.rows[4].cells
-                for cell in row4.cells:
+                for cell in row4:
                     cell.text = 'In Words: Twenty-Nine Thousand Five Hundred Forty-Six INR Only PER EACH'
                 
                 print(f"Created basic template at: {template_path}")
             else:
                 doc = Document(template_path)
             
-            # Prepare replacements for tag-based system
+            # Prepare replacements using NEW TAG SYSTEM
             replacements = {
-                # Basic document info
-                "KEC005JN2025": quote_data['quote_no'],
-                "Rev A": quote_data['revision'],
-                "Wednesday, September 24, 2025": quote_data['date'],
-                "Mr. Mohak Dholakia": quote_data['to_person'],
-                "Schneider Electric India Private Limited": quote_data['firm'],
-                "Electrical & Automation (E&A), Village Ankhol, Behind L&T Knowledge City, N. H. 8, Between Ajwa-Waghodia Junction, Vadodara –390019. India": quote_data['address'],
+                # Basic document info tags
+                "<quote_no>": quote_data['quote_no'],
+                "<revision>": quote_data['revision'],
+                "<date>": quote_data['date'],
+                "<to_person>": quote_data['to_person'],
+                "<firm>": quote_data['firm'],
+                "<address>": quote_data['address'],
                 
-                # Terms
-                "Payment: 45 Days from delivery (Being an MSME)": quote_data['payment_terms'],
-                "Delivery: 2-3 weeks per fixture from Purchase Order (Gov. force majeure conditions apply at time of delivery)": quote_data['delivery_terms'],
+                # Terms & Conditions tags
+                "<payment_terms>": quote_data['payment_terms'],
+                "<delivery_terms>": quote_data['delivery_terms'],
                 
-                # Tag-based content sections
+                # Content sections (keeping existing for backward compatibility)
                 "<inclusion>": inclusion_content,
                 "<scope>": scope_content,
                 "<specification>": specification_content,
-                "< specification>": specification_content,  # Handle the space variant
-                
-                # Price replacements only (avoid fixture name replacements that interfere with Sr column)
-                "26,879/-": fixtures[0]['price'] if fixtures[0]['price'] else "26,879/-",
-                "Twenty-Six Thousand Eight Hundred Seventy-Nine INR Only PER EACH": fixtures[0]['words'] if fixtures[0]['words'] else "Twenty-Six Thousand Eight Hundred Seventy-Nine INR Only PER EACH",
-                
-                "29,546/-": fixtures[1]['price'] if fixtures[1]['price'] else "29,546/-",
-                "Twenty-Nine Thousand Five Hundred Forty-Six INR Only PER EACH": fixtures[1]['words'] if fixtures[1]['words'] else "Twenty-Nine Thousand Five Hundred Forty-Six INR Only PER EACH",
             }
+            
+            # Add dynamic product tags for each fixture
+            for idx, fixture in enumerate(fixtures):
+                sr_no = idx + 1
+                
+                # Product table tags for each fixture
+                replacements[f"<sr_no_{sr_no}>"] = str(sr_no)
+                replacements[f"<product_name_{sr_no}>"] = fixture.get('name', '')
+                replacements[f"<product_description_{sr_no}>"] = fixture.get('desc', '')
+                replacements[f"<product_specifications_{sr_no}>"] = fixture.get('specifications', '')
+                replacements[f"<hsn_code_{sr_no}>"] = fixture.get('hsn', '84790000')
+                replacements[f"<qty_{sr_no}>"] = fixture.get('qty', '1')
+                replacements[f"<product_price_{sr_no}>"] = fixture.get('price', '')
+                replacements[f"<product_unit_{sr_no}>"] = fixture.get('unit', 'Set')
+                replacements[f"<total_amount_{sr_no}>"] = fixture.get('total', '')
+                replacements[f"<product_word_price_{sr_no}>"] = fixture.get('words', '')
+                
+                # Also add generic tags for first product (for single product templates)
+                if idx == 0:
+                    replacements["<sr_no>"] = str(sr_no)
+                    replacements["<product_name>"] = fixture.get('name', '')
+                    replacements["<product_description>"] = fixture.get('desc', '')
+                    replacements["<product_specifications>"] = fixture.get('specifications', '')
+                    replacements["<hsn_code>"] = fixture.get('hsn', '84790000')
+                    replacements["<qty>"] = fixture.get('qty', '1')
+                    replacements["<product_price>"] = fixture.get('price', '')
+                    replacements["<product_unit>"] = fixture.get('unit', 'Set')
+                    replacements["<total_amount>"] = fixture.get('total', '')
+                    replacements["<product_word_price>"] = fixture.get('words', '')
+            
+            print(f"=== NEW TAG SYSTEM: Created {len(replacements)} replacement tags ===")
+            for key in sorted(replacements.keys()):
+                if key.startswith('<') and key.endswith('>'):
+                    print(f"Tag: {key} = '{str(replacements[key])[:50]}...'")
+            print("=== END TAG LIST ===")
             
             # Apply text replacements using the advanced seek_and_replace function
             doc = seek_and_replace(doc, replacements)
             
-            # Insert images in inclusion section after text replacements
+            # Handle multiple products in inclusion and scope sections
+            handle_multiple_products_in_sections(doc, fixtures)
+            
+            # Handle product image tags with actual images
+            handle_product_image_tags(doc, fixtures)
+            
+            # Insert images in inclusion section after text replacements (legacy support)
             insert_images_in_inclusion_section(doc, fixtures)
             
             # CRITICAL: Handle pricing table AFTER all text replacements to prevent interference
             print("=== STARTING TABLE PROCESSING ===")
-            if len(doc.tables) > 1:
-                pricing_table = doc.tables[1]  # Second table is the pricing table
-                print(f"Found pricing table with {len(pricing_table.rows)} rows")
+            
+            # Find the pricing table more robustly
+            pricing_table = None
+            pricing_table_index = -1
+            
+            for table_idx, table in enumerate(doc.tables):
+                if len(table.rows) > 0:
+                    # Check first row to identify pricing table
+                    first_row_text = ' '.join([cell.text.strip().lower() for cell in table.rows[0].cells])
+                    if any(keyword in first_row_text for keyword in ['sr', 'description', 'qty', 'rate', 'amount']):
+                        pricing_table = table
+                        pricing_table_index = table_idx
+                        print(f"Found pricing table at index {table_idx} with {len(table.rows)} rows")
+                        break
+            
+            if pricing_table:
+                print(f"Processing pricing table with {len(fixtures)} fixtures")
                 
                 # AGGRESSIVE: Populate existing fixture rows with forced content
                 populate_pricing_table_with_fixtures(pricing_table, fixtures)
                 
-                # Add additional fixture rows if needed (beyond the first 2)
-                if len(fixtures) > 2:
-                    print(f"Adding {len(fixtures) - 2} additional fixture rows")
+                # Add additional fixture rows if needed (beyond the first 1)
+                if len(fixtures) > 1:
+                    print(f"Adding {len(fixtures) - 1} additional fixture rows")
                     add_fixture_rows_to_table(pricing_table, fixtures)
                     
                 # FINAL VERIFICATION: Check if our changes took effect
                 print("=== POST-PROCESSING VERIFICATION ===")
+                print(f"Final pricing table has {len(pricing_table.rows)} rows")
                 for r_idx in range(min(6, len(pricing_table.rows))):
                     try:
                         row = pricing_table.rows[r_idx]
@@ -4268,7 +4495,11 @@ def generate_quotation(request):
                 'quotation_id': quotation.id
             }
             
-            messages.success(request, f'Quotation {quotation.quote_number} generated successfully!')
+            # Try to add success message, but don't fail if messages middleware is not available
+            try:
+                messages.success(request, f'Quotation {quotation.quote_number} generated successfully!')
+            except:
+                print(f"Quotation {quotation.quote_number} generated successfully!")
             
             # Return a special response that triggers download then redirect
             return render(request, 'dashboard/quotation_download_redirect.html', {
@@ -4277,7 +4508,11 @@ def generate_quotation(request):
             })
             
         except Exception as e:
-            messages.error(request, f'Error generating quotation: {str(e)}')
+            # Try to add error message, but don't fail if messages middleware is not available
+            try:
+                messages.error(request, f'Error generating quotation: {str(e)}')
+            except:
+                print(f'Error generating quotation: {str(e)}')
             import traceback
             traceback.print_exc()
             return render(request, 'dashboard/quotation_generator.html', {'error': str(e)})
@@ -4630,22 +4865,19 @@ def quotation_download(request, quotation_id):
     
     try:
         # Always regenerate the document (no file storage)
-        # Prepare replacements for document generation
+        # Prepare replacements using NEW TAG SYSTEM for download
         replacements = {
-            # Basic Info
-            "KEC005JN2025": quotation.quote_number,
-            "Rev A": quotation.revision,
-            "Wednesday, September 24, 2025": quotation.quotation_date,
-            "Mr. Mohak Dholakia": quotation.to_person,
-            "Schneider Electric India Private Limited": quotation.firm,
-            "Electrical & Automation (E&A), Village Ankhol, Behind L&T Knowledge City, N. H. 8, Between Ajwa-Waghodia Junction, Vadodara –390019. India": quotation.address,
+            # Basic document info tags
+            "<quote_no>": quotation.quote_number,
+            "<revision>": quotation.revision,
+            "<date>": quotation.quotation_date,
+            "<to_person>": quotation.to_person,
+            "<firm>": quotation.firm,
+            "<address>": quotation.address,
             
-            # Payment and Delivery
-            "Payment: 45 Days from delivery (Being an MSME)": quotation.payment_terms,
-            "Delivery: 2-3 weeks per fixture from Purchase Order (Gov. force majeure conditions apply at time of delivery)": quotation.delivery_terms,
-            
-            # Scope
-            "Fixtures as per discussion:": quotation.scope_description,
+            # Terms & Conditions tags
+            "<payment_terms>": quotation.payment_terms,
+            "<delivery_terms>": quotation.delivery_terms,
         }
 
         # Build specifications from stored fixtures data
@@ -4693,33 +4925,62 @@ def quotation_download(request, quotation_id):
         
         inclusion_content = "\n\n".join(inclusion_items) if inclusion_items else "Fixtures as per discussion"
         
-        # Add inclusion content to replacements
+        # Add content sections to replacements
         replacements["<inclusion>"] = inclusion_content
-        
-        # Add tag-based replacements for specifications
         replacements["<specification>"] = specifications_str
-        replacements["< specification>"] = specifications_str  # Handle space variant
-
-        # Add fixture replacements for first 2 fixtures (prices and words only, not names)
-        if len(quotation.fixtures_data) >= 1:
-            fixture = quotation.fixtures_data[0]
-            replacements["26,879/-"] = fixture.get('price', '26,879/-')
-            replacements["Twenty-Six Thousand Eight Hundred Seventy-Nine INR Only PER EACH"] = fixture.get('words', 'Twenty-Six Thousand Eight Hundred Seventy-Nine INR Only PER EACH')
         
-        if len(quotation.fixtures_data) >= 2:
-            fixture = quotation.fixtures_data[1]
-            replacements["29,546/-"] = fixture.get('price', '29,546/-')
-            replacements["Twenty-Nine Thousand Five Hundred Forty-Six INR Only PER EACH"] = fixture.get('words', 'Twenty-Nine Thousand Five Hundred Forty-Six INR Only PER EACH')
+        # Add dynamic product tags for each fixture (for download)
+        for idx, fixture in enumerate(quotation.fixtures_data):
+            sr_no = idx + 1
+            
+            # Product table tags for each fixture
+            replacements[f"<sr_no_{sr_no}>"] = str(sr_no)
+            replacements[f"<product_name_{sr_no}>"] = fixture.get('name', '')
+            replacements[f"<product_description_{sr_no}>"] = fixture.get('desc', '')
+            replacements[f"<product_specifications_{sr_no}>"] = fixture.get('specifications', '')
+            replacements[f"<hsn_code_{sr_no}>"] = fixture.get('hsn', '84790000')
+            replacements[f"<qty_{sr_no}>"] = fixture.get('qty', '1')
+            replacements[f"<product_price_{sr_no}>"] = fixture.get('price', '')
+            replacements[f"<product_unit_{sr_no}>"] = fixture.get('unit', 'Set')
+            replacements[f"<total_amount_{sr_no}>"] = fixture.get('total', '')
+            replacements[f"<product_word_price_{sr_no}>"] = fixture.get('words', '')
+            
+            # Also add generic tags for first product (for single product templates)
+            if idx == 0:
+                replacements["<sr_no>"] = str(sr_no)
+                replacements["<product_name>"] = fixture.get('name', '')
+                replacements["<product_description>"] = fixture.get('desc', '')
+                replacements["<product_specifications>"] = fixture.get('specifications', '')
+                replacements["<hsn_code>"] = fixture.get('hsn', '84790000')
+                replacements["<qty>"] = fixture.get('qty', '1')
+                replacements["<product_price>"] = fixture.get('price', '')
+                replacements["<product_unit>"] = fixture.get('unit', 'Set')
+                replacements["<total_amount>"] = fixture.get('total', '')
+                replacements["<product_word_price>"] = fixture.get('words', '')
+        
+        print(f"=== DOWNLOAD: NEW TAG SYSTEM with {len(replacements)} tags ===")
+        print(f"Processing {len(quotation.fixtures_data)} fixtures for download")
 
         # Load template
         from pathlib import Path
         BASE_DIR = Path(__file__).resolve().parent.parent
-        template_path = os.path.join(BASE_DIR, 'Quote KEC005JN2025 RevA - new format full_1.docx')
+        template_path = os.path.join(BASE_DIR, 'Quote Format.docx')
         
         doc = Document(template_path)
 
         # Apply text replacements using the advanced seek_and_replace function
         doc = seek_and_replace(doc, replacements)
+
+        # For download, create fixtures without image bytes (images not stored in DB)
+        fixtures_for_download = []
+        for fixture in quotation.fixtures_data:
+            download_fixture = dict(fixture)
+            download_fixture['image'] = None  # No image bytes available for download
+            download_fixture['has_image'] = False
+            fixtures_for_download.append(download_fixture)
+        
+        # Handle product image tags (will show placeholders since no images for download)
+        handle_product_image_tags(doc, fixtures_for_download)
 
         # Handle pricing table with fixtures (without images for download)
         if len(doc.tables) > 1:
