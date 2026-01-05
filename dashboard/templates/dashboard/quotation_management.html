@@ -126,10 +126,10 @@
                                     <small class="text-muted">{{ quotation.updated_at|date:"M d, Y H:i" }}</small>
                                 </td>
                                 <td>
-                                    <span class="badge bg-{{ quotation.get_status_class }}">{{ quotation.get_status_display }}</span>
+                                    <span class="fw-semibold text-{{ quotation.get_status_class }}">{{ quotation.get_status_display }}</span>
                                 </td>
                                 <td>
-                                    <span class="badge bg-light text-dark">{{ quotation.fixtures_count }} items</span>
+                                    <span class="fw-semibold text-muted">{{ quotation.fixtures_count }} items</span>
                                 </td>
                                 <td>
                                     <div class="action-buttons">

@@ -111,7 +111,7 @@
                                     <small class="text-muted">{{ inquiry.created_at|date:"M d, Y" }}</small>
                                 </td>
                                 <td>
-                                    <span class="badge bg-{{ inquiry.get_status_class }}">{{ inquiry.status }}</span>
+                                    <span class="fw-semibold text-{{ inquiry.get_status_class }}">{{ inquiry.status }}</span>
                                 </td>
                                 <td>
                                     <div class="fw-semibold">{{ inquiry.company.company.company_name }}</div>

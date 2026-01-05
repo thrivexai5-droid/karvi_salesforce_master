@@ -104,16 +104,6 @@
                     <a href="{% url 'dashboard:purchase_order_management' %}" class="btn btn-outline-secondary">Clear</a>
                 {% endif %}
             </form>
-            
-            <!-- Export to Excel Button -->
-            <div class="export-section">
-                <a href="{% url 'dashboard:export_purchase_orders_excel' %}{% if search_query %}?search={{ search_query }}{% endif %}" 
-                   class="btn btn-success" 
-                   title="Export to Excel">
-                    <i class="bi bi-file-earmark-excel me-2"></i>
-                    Download Excel
-                </a>
-            </div>
         </div>
     </div>
 
@@ -174,16 +164,16 @@
                                 <td>
                                     {% if order.due_days is not None %}
                                         {% if order.due_days > 7 %}
-                                            <span class="badge" style="background-color: #22c55e; color: black;">{{ order.due_days }}</span>
+                                            <span class="fw-semibold" style="color: #22c55e;">{{ order.due_days }}</span>
                                         {% elif order.due_days > 0 %}
-                                            <span class="badge" style="background-color: #f97316; color: black;">{{ order.due_days }}</span>
+                                            <span class="fw-semibold" style="color: #f97316;">{{ order.due_days }}</span>
                                         {% elif order.due_days == 0 %}
-                                            <span class="badge" style="background-color: #f59e0b; color: black;">0</span>
+                                            <span class="fw-semibold" style="color: #f59e0b;">0</span>
                                         {% else %}
-                                            <span class="badge" style="background-color: #ef4444; color: black;">{{ order.due_days|stringformat:"d"|slice:"1:" }}</span>
+                                            <span class="fw-semibold" style="color: #ef4444;">{{ order.due_days|stringformat:"d"|slice:"1:" }}</span>
                                         {% endif %}
                                     {% else %}
-                                        <span class="badge" style="background-color: #6b7280; color: black;">-</span>
+                                        <span class="fw-semibold" style="color: #6b7280;">-</span>
                                     {% endif %}
                                 </td>
                                 <td>
