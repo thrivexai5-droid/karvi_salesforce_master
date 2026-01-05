@@ -103,7 +103,8 @@
             }
         };
 
-        // Chart 1 - Sales Distribution (Dynamic Data)
+        // Chart 1 - Operations Chart (Sales Distribution - Dynamic Data) - Updated with UEOB
+        console.log('Operations Chart Labels:', ['Sales closed', 'UEOB', 'Collection']);
         const chart1Options = {
             ...commonOptions,
             series: [dashboardData.salesClosedValue, dashboardData.totalValue, dashboardData.paidTotalValue],
@@ -133,12 +134,32 @@
         const chart1 = new ApexCharts(document.querySelector("#apexChart1"), chart1Options);
         chart1.render();
 
-        // Chart 2 - User Demographics
+        // Chart 2 - Sales Chart (using Sales Closed value as Sold)
         const chart2Options = {
             ...commonOptions,
-            series: [30, 40, 20],
+            series: [dashboardData.salesClosedValue, 40, 20],
             labels: ['Sold', 'Sales Gap', 'Further'],
-            colors: ['#00B0F0', '#FF0000', '#FFFF00']
+            colors: ['#00B0F0', '#FF0000', '#FFFF00'],
+            tooltip: {
+                enabled: true,
+                theme: 'dark',
+                style: {
+                    fontSize: '14px',
+                    fontFamily: 'Inter, sans-serif'
+                },
+                y: {
+                    formatter: function (val, opts) {
+                        if (opts.seriesIndex === 0) {
+                            return 'Sold: ₹' + dashboardData.salesClosedValueFormatted;
+                        } else if (opts.seriesIndex === 1) {
+                            return 'Sales Gap: ' + val;
+                        } else if (opts.seriesIndex === 2) {
+                            return 'Further: ' + val;
+                        }
+                        return val;
+                    }
+                }
+            }
         };
         const chart2 = new ApexCharts(document.querySelector("#apexChart2"), chart2Options);
         chart2.render();
