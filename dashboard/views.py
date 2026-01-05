@@ -10,6 +10,7 @@ from django.db.models import Q, Sum
 from django.db import models
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
 from datetime import datetime
 import json
 import base64
@@ -379,6 +380,14 @@ class UserManagementForm(forms.Form):
         widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Enter password'})
     )
     
+    # User Status
+    is_active = forms.BooleanField(
+        required=False,
+        initial=True,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        help_text="Uncheck to create user as inactive (they won't be able to log in)"
+    )
+    
     # Role Selection
     ROLE_CHOICES = [
         ('sales', 'Sales'),
@@ -450,6 +459,14 @@ class UserEditForm(forms.Form):
         min_length=8,
         required=False,  # Optional for edit
         widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Leave blank to keep current password'})
+    )
+    
+    # User Status
+    is_active = forms.BooleanField(
+        required=False,
+        initial=True,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        help_text="Uncheck to deactivate user (they won't be able to log in)"
     )
     
     # Role Selection
@@ -634,6 +651,17 @@ def get_full_dashboard_data():
     paid_total_value = Invoice.objects.filter(status='paid').aggregate(total=Sum('order_value'))['total'] or Decimal('0')
     paid_invoices_count = Invoice.objects.filter(status='paid').count()
     
+    # Calculate Sales Closed using the formula: (formatted_total_sales / 1.18) + SUM(total value of invoice)
+    # Get total sales from all invoices (this represents formatted_total_sales)
+    total_sales_value = Invoice.objects.aggregate(total=Sum('order_value'))['total'] or Decimal('0')
+    
+    # Apply the formula: (total_sales / 1.18) + total_sales
+    # This seems to be: (total_sales / 1.18) + total_sales = total_sales * (1 + 1/1.18) = total_sales * (2.18/1.18)
+    sales_closed_value = (total_sales_value / Decimal('1.18')) + total_sales_value
+    
+    # Alternative interpretation: if formatted_total_sales is different from invoice total
+    # You can modify this calculation based on your specific requirements
+    
     # Calculate sustainability metrics
     from .services import calculate_sustainability_date
     sustainability_data = calculate_sustainability_date()
@@ -682,6 +710,8 @@ def get_full_dashboard_data():
         'gst_value_raw': gst_value,
         'paid_total_value': format_indian_currency(paid_total_value),
         'paid_total_value_raw': paid_total_value,
+        'sales_closed_value': format_indian_currency(sales_closed_value),
+        'sales_closed_value_raw': sales_closed_value,
         'paid_invoices_count': paid_invoices_count,
         'recent_invoices': recent_invoices,
         'recent_purchase_orders': recent_purchase_orders,
@@ -1009,6 +1039,7 @@ def user_management_view(request):
         'search_query': search_query,
         'total_users': User.objects.count(),
         'active_users': User.objects.filter(is_active=True).count(),
+        'inactive_users': User.objects.filter(is_active=False).count(),
         'sales_users': UserProfile.objects.filter(roles__contains='sales').count(),
         'pm_users': UserProfile.objects.filter(roles__contains='project_manager').count(),
     }
@@ -1053,7 +1084,8 @@ def user_create_view(request):
                     email=form.cleaned_data['email'],
                     password=plain_password,
                     first_name=first_name,
-                    last_name=last_name
+                    last_name=last_name,
+                    is_active=form.cleaned_data.get('is_active', True)
                 )
                 
                 # Store the password for display purposes
@@ -1109,6 +1141,7 @@ def user_edit_view(request, user_id):
             user.first_name = name_parts[0]
             user.last_name = name_parts[1] if len(name_parts) > 1 else ''
             user.email = form.cleaned_data['email']
+            user.is_active = form.cleaned_data.get('is_active', True)
             if form.cleaned_data['password']:
                 new_password = form.cleaned_data['password']
                 user.set_password(new_password)
@@ -1148,6 +1181,7 @@ def user_edit_view(request, user_id):
             'phone_number': profile.phone_number or '',
             'role': profile.get_roles_list(),
             'form_permissions': selected_permissions,
+            'is_active': user.is_active,
         }
         form = UserEditForm(initial=initial_data, user_instance=user)
     
@@ -1539,10 +1573,16 @@ class PurchaseOrderForm(forms.ModelForm):
             'days_to_mfg': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Enter manufacturing days'}),
             'remarks': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Enter remarks (optional)'}),
             'payment_terms': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Enter days (e.g., 45)', 'min': '1'}),
-            'sales_person': forms.Select(attrs={'class': 'form-select'}),
-            'sales_percentage': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Enter percentage (e.g., 5.50)', 'step': '0.01', 'min': '0', 'max': '100'}),
-            'project_manager': forms.Select(attrs={'class': 'form-select'}),
-            'project_manager_percentage': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Enter percentage (e.g., 3.25)', 'step': '0.01', 'min': '0', 'max': '100'}),
+            'sales_person': forms.Select(attrs={'class': 'form-select', 'required': True}),
+            'sales_percentage': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Enter percentage (e.g., 5.50)', 'step': '0.01', 'min': '0', 'max': '100', 'required': True}),
+            'project_manager': forms.Select(attrs={'class': 'form-select', 'required': True}),
+            'project_manager_percentage': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Enter percentage (e.g., 3.25)', 'step': '0.01', 'min': '0', 'max': '100', 'required': True}),
+        }
+        labels = {
+            'sales_person': 'Sales Person *',
+            'project_manager': 'Project Manager *',
+            'sales_percentage': 'Sales Percentage (%) *',
+            'project_manager_percentage': 'Project Manager Percentage (%) *',
         }
     
     def __init__(self, *args, **kwargs):
@@ -1551,12 +1591,21 @@ class PurchaseOrderForm(forms.ModelForm):
         # Filter sales persons (users with sales role)
         sales_users = User.objects.filter(userprofile__roles__contains='sales').distinct()
         self.fields['sales_person'].queryset = sales_users
-        self.fields['sales_person'].empty_label = "Select Sales Person"
+        self.fields['sales_person'].empty_label = "Select Sales Person *"
+        self.fields['sales_person'].required = True  # Make required
         
         # Filter project managers (users with project_manager role)
         pm_users = User.objects.filter(userprofile__roles__contains='project_manager').distinct()
         self.fields['project_manager'].queryset = pm_users
-        self.fields['project_manager'].empty_label = "Select Project Manager"
+        self.fields['project_manager'].empty_label = "Select Project Manager *"
+        self.fields['project_manager'].required = True  # Make required
+        
+        # Make customer name required
+        self.fields['customer_name_select'].required = True
+        
+        # Make percentage fields required
+        self.fields['sales_percentage'].required = True
+        self.fields['project_manager_percentage'].required = True
         
         # If editing existing order, set the customer fields
         if self.instance and self.instance.pk and self.instance.company:
@@ -1575,10 +1624,33 @@ class PurchaseOrderForm(forms.ModelForm):
         cleaned_data = super().clean()
         selected_customer_id = cleaned_data.get('selected_customer_id')
         customer_name_select = cleaned_data.get('customer_name_select')
+        sales_person = cleaned_data.get('sales_person')
+        project_manager = cleaned_data.get('project_manager')
+        sales_percentage = cleaned_data.get('sales_percentage')
+        project_manager_percentage = cleaned_data.get('project_manager_percentage')
         
-        # Validate that a customer was selected
+        # Validate that a customer was selected (Customer Name is required)
         if not selected_customer_id and customer_name_select:
             raise forms.ValidationError("Please select a valid customer from the dropdown.")
+        
+        if not customer_name_select or not selected_customer_id:
+            raise forms.ValidationError("Customer Name is required. Please select a customer.")
+        
+        # Validate that Sales Person is selected (required)
+        if not sales_person:
+            raise forms.ValidationError("Sales Person is required. Please select a sales person.")
+        
+        # Validate that Project Manager is selected (required)
+        if not project_manager:
+            raise forms.ValidationError("Project Manager is required. Please select a project manager.")
+        
+        # Validate that Sales Percentage is provided (required)
+        if sales_percentage is None or sales_percentage == '':
+            raise forms.ValidationError("Sales Percentage is required. Please enter a percentage value.")
+        
+        # Validate that Project Manager Percentage is provided (required)
+        if project_manager_percentage is None or project_manager_percentage == '':
+            raise forms.ValidationError("Project Manager Percentage is required. Please enter a percentage value.")
         
         return cleaned_data
     
@@ -1603,12 +1675,12 @@ class PurchaseOrderForm(forms.ModelForm):
 def purchase_order_management_view(request):
     """Purchase Order management page with list of orders"""
     search_query = request.GET.get('search', '')
-    orders = PurchaseOrder.objects.select_related('company', 'sales_person', 'project_manager').all()
+    orders = PurchaseOrder.objects.select_related('company__company', 'sales_person', 'project_manager').all()
     
     if search_query:
         orders = orders.filter(
             Q(po_number__icontains=search_query) |
-            Q(company__company__icontains=search_query) |
+            Q(company__company__company_name__icontains=search_query) |
             Q(customer_name__icontains=search_query) |
             Q(sales_person__username__icontains=search_query) |
             Q(project_manager__username__icontains=search_query)
@@ -1849,12 +1921,12 @@ def export_purchase_orders_excel(request):
     
     # Get the same filtered queryset as the management view
     search_query = request.GET.get('search', '')
-    orders = PurchaseOrder.objects.select_related('company', 'sales_person', 'project_manager').all()
+    orders = PurchaseOrder.objects.select_related('company__company', 'sales_person', 'project_manager').all()
     
     if search_query:
         orders = orders.filter(
             Q(po_number__icontains=search_query) |
-            Q(company__company__icontains=search_query) |
+            Q(company__company__company_name__icontains=search_query) |
             Q(customer_name__icontains=search_query) |
             Q(sales_person__username__icontains=search_query) |
             Q(project_manager__username__icontains=search_query)
@@ -2113,14 +2185,99 @@ class InvoiceForm(forms.ModelForm):
 
 @login_required
 def invoice_management_view(request):
-    """Invoice management page with list of invoices"""
+    """Invoice management page with list of invoices - filtered by user role and assignments"""
     search_query = request.GET.get('search', '')
-    invoices = Invoice.objects.select_related('company', 'purchase_order').all()
     
+    # Get user role and permissions
+    user_role = request.user.userprofile.get_roles_list()
+    
+    # Filter invoices based on user role - Sales users see only their related invoices
+    if user_role == 'sales':
+        # Sales users can only see invoices from purchase orders assigned to them
+        invoices = Invoice.objects.select_related('company__company', 'purchase_order').filter(
+            purchase_order__sales_person=request.user
+        )
+        # Statistics filtered by sales person
+        total_invoices = Invoice.objects.filter(purchase_order__sales_person=request.user).count()
+        total_value = Invoice.objects.filter(purchase_order__sales_person=request.user).aggregate(
+            total=models.Sum('order_value')
+        )['total'] or 0
+        paid_total_value = Invoice.objects.filter(
+            purchase_order__sales_person=request.user, status='paid'
+        ).aggregate(total=models.Sum('order_value'))['total'] or 0
+        partial_total_value = Invoice.objects.filter(
+            purchase_order__sales_person=request.user, status='partial'
+        ).aggregate(total=models.Sum('order_value'))['total'] or 0
+        overdue_invoices = Invoice.objects.filter(
+            purchase_order__sales_person=request.user, due_days__lt=0
+        ).count()
+        due_today = Invoice.objects.filter(
+            purchase_order__sales_person=request.user, due_days=0
+        ).count()
+        paid_invoices_count = Invoice.objects.filter(
+            purchase_order__sales_person=request.user, status='paid'
+        ).count()
+        partial_invoices_count = Invoice.objects.filter(
+            purchase_order__sales_person=request.user, status='partial'
+        ).count()
+    elif user_role in ['admin', 'manager']:
+        # Admin and Manager can see all invoices
+        invoices = Invoice.objects.select_related('company__company', 'purchase_order').all()
+        # Statistics for all invoices
+        total_invoices = Invoice.objects.count()
+        total_value = Invoice.objects.aggregate(total=models.Sum('order_value'))['total'] or 0
+        paid_total_value = Invoice.objects.filter(status='paid').aggregate(total=models.Sum('order_value'))['total'] or 0
+        partial_total_value = Invoice.objects.filter(status='partial').aggregate(total=models.Sum('order_value'))['total'] or 0
+        overdue_invoices = Invoice.objects.filter(due_days__lt=0).count()
+        due_today = Invoice.objects.filter(due_days=0).count()
+        paid_invoices_count = Invoice.objects.filter(status='paid').count()
+        partial_invoices_count = Invoice.objects.filter(status='partial').count()
+    else:
+        # Other users with invoice generation permission can see invoices from their POs
+        if request.user.userprofile.can_access_invoice_generation:
+            invoices = Invoice.objects.select_related('company__company', 'purchase_order').filter(
+                purchase_order__sales_person=request.user
+            )
+            # Statistics filtered by user
+            total_invoices = Invoice.objects.filter(purchase_order__sales_person=request.user).count()
+            total_value = Invoice.objects.filter(purchase_order__sales_person=request.user).aggregate(
+                total=models.Sum('order_value')
+            )['total'] or 0
+            paid_total_value = Invoice.objects.filter(
+                purchase_order__sales_person=request.user, status='paid'
+            ).aggregate(total=models.Sum('order_value'))['total'] or 0
+            partial_total_value = Invoice.objects.filter(
+                purchase_order__sales_person=request.user, status='partial'
+            ).aggregate(total=models.Sum('order_value'))['total'] or 0
+            overdue_invoices = Invoice.objects.filter(
+                purchase_order__sales_person=request.user, due_days__lt=0
+            ).count()
+            due_today = Invoice.objects.filter(
+                purchase_order__sales_person=request.user, due_days=0
+            ).count()
+            paid_invoices_count = Invoice.objects.filter(
+                purchase_order__sales_person=request.user, status='paid'
+            ).count()
+            partial_invoices_count = Invoice.objects.filter(
+                purchase_order__sales_person=request.user, status='partial'
+            ).count()
+        else:
+            # Users without invoice generation permission see no invoices
+            invoices = Invoice.objects.none()
+            total_invoices = 0
+            total_value = 0
+            paid_total_value = 0
+            partial_total_value = 0
+            overdue_invoices = 0
+            due_today = 0
+            paid_invoices_count = 0
+            partial_invoices_count = 0
+    
+    # Apply search filter
     if search_query:
         invoices = invoices.filter(
             Q(invoice_number__icontains=search_query) |
-            Q(company__company__icontains=search_query) |
+            Q(company__company__company_name__icontains=search_query) |
             Q(customer_name__icontains=search_query) |
             Q(purchase_order__po_number__icontains=search_query)
         )
@@ -2131,16 +2288,6 @@ def invoice_management_view(request):
     paginator = Paginator(invoices, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    
-    # Statistics
-    total_invoices = Invoice.objects.count()
-    total_value = Invoice.objects.aggregate(total=models.Sum('order_value'))['total'] or 0
-    paid_total_value = Invoice.objects.filter(status='paid').aggregate(total=models.Sum('order_value'))['total'] or 0
-    partial_total_value = Invoice.objects.filter(status='partial').aggregate(total=models.Sum('order_value'))['total'] or 0
-    overdue_invoices = Invoice.objects.filter(due_days__lt=0).count()
-    due_today = Invoice.objects.filter(due_days=0).count()
-    paid_invoices_count = Invoice.objects.filter(status='paid').count()
-    partial_invoices_count = Invoice.objects.filter(status='partial').count()
     
     context = {
         'page_obj': page_obj,
@@ -2153,6 +2300,9 @@ def invoice_management_view(request):
         'due_today': due_today,
         'paid_invoices_count': paid_invoices_count,
         'partial_invoices_count': partial_invoices_count,
+        'user_role': user_role,
+        'is_admin': user_role in ['admin', 'manager'],
+        'can_see_all_invoices': user_role in ['admin', 'manager'],
     }
     
     return render(request, 'dashboard/invoice_management.html', context)
@@ -2536,28 +2686,36 @@ def inquiry_handler_management_view(request):
     # Get user role and permissions
     user_role = request.user.userprofile.get_roles_list()
     
-    # Filter inquiries based on user role and permissions
-    if user_role in ['admin', 'manager']:
-        # Admin and Manager can see all inquiries
-        inquiries = InquiryHandler.objects.select_related('company', 'sales').all()
-        total_inquiries = InquiryHandler.objects.count()
-        active_inquiries = InquiryHandler.objects.exclude(status__in=['Lost', 'Project Closed']).count()
-        quotation_stage = InquiryHandler.objects.filter(status='Quotation').count()
-        closed_inquiries = InquiryHandler.objects.filter(status='Project Closed').count()
-    elif request.user.userprofile.can_access_inquiry_handler:
+    # Filter inquiries based on user role - Sales users see only their assigned inquiries
+    if user_role == 'sales':
         # Sales users can only see inquiries assigned to them
         inquiries = InquiryHandler.objects.select_related('company', 'sales').filter(sales=request.user)
         total_inquiries = InquiryHandler.objects.filter(sales=request.user).count()
         active_inquiries = InquiryHandler.objects.filter(sales=request.user).exclude(status__in=['Lost', 'Project Closed']).count()
         quotation_stage = InquiryHandler.objects.filter(sales=request.user, status='Quotation').count()
         closed_inquiries = InquiryHandler.objects.filter(sales=request.user, status='Project Closed').count()
+    elif user_role in ['admin', 'manager']:
+        # Admin and Manager can see all inquiries
+        inquiries = InquiryHandler.objects.select_related('company', 'sales').all()
+        total_inquiries = InquiryHandler.objects.count()
+        active_inquiries = InquiryHandler.objects.exclude(status__in=['Lost', 'Project Closed']).count()
+        quotation_stage = InquiryHandler.objects.filter(status='Quotation').count()
+        closed_inquiries = InquiryHandler.objects.filter(status='Project Closed').count()
     else:
-        # Users without inquiry handler permission see no inquiries
-        inquiries = InquiryHandler.objects.none()
-        total_inquiries = 0
-        active_inquiries = 0
-        quotation_stage = 0
-        closed_inquiries = 0
+        # Other users with inquiry handler permission can see inquiries assigned to them
+        if request.user.userprofile.can_access_inquiry_handler:
+            inquiries = InquiryHandler.objects.select_related('company', 'sales').filter(sales=request.user)
+            total_inquiries = InquiryHandler.objects.filter(sales=request.user).count()
+            active_inquiries = InquiryHandler.objects.filter(sales=request.user).exclude(status__in=['Lost', 'Project Closed']).count()
+            quotation_stage = InquiryHandler.objects.filter(sales=request.user, status='Quotation').count()
+            closed_inquiries = InquiryHandler.objects.filter(sales=request.user, status='Project Closed').count()
+        else:
+            # Users without inquiry handler permission see no inquiries
+            inquiries = InquiryHandler.objects.none()
+            total_inquiries = 0
+            active_inquiries = 0
+            quotation_stage = 0
+            closed_inquiries = 0
     
     # Apply search filter
     if search_query:
@@ -3168,7 +3326,7 @@ def fetch_quotation_data_ajax(request):
             return JsonResponse({'success': False, 'error': f'Error fetching data: {str(e)}'})
     
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
-    
+   
 from django.conf import settings
 from docx import Document
 from docx.enum.text import WD_COLOR_INDEX
@@ -3186,13 +3344,24 @@ IMAGE_WIDTH_MM = 38.1
 def seek_and_replace(doc, replacements):
     """Replace text in DOCX while preserving formatting, especially for highlighted text"""
     
-    def replace_in_paragraph(paragraph, replacements):
+    def replace_in_paragraph(paragraph, replacements, skip_template_tags=False):
         # Get full text from all runs
         full_text = "".join(run.text for run in paragraph.runs)
         replaced_text = full_text
         
+        # If skip_template_tags is True, don't replace template tags for inclusion/scope sections
+        if skip_template_tags:
+            # Only replace basic document info, not product template tags
+            filtered_replacements = {}
+            for old, new in replacements.items():
+                if not any(tag in old for tag in ['<sr_no>', '<product_name>', '<product_description>', '<product_specifications>', '<product_image>']):
+                    filtered_replacements[old] = new
+            replacements_to_use = filtered_replacements
+        else:
+            replacements_to_use = replacements
+        
         # Try replacements on full text
-        for old, new in replacements.items():
+        for old, new in replacements_to_use.items():
             if new and old in replaced_text:
                 replaced_text = replaced_text.replace(old, new)
         
@@ -3235,9 +3404,24 @@ def seek_and_replace(doc, replacements):
                 for inner_table in cell.tables:
                     replace_in_table(inner_table, replacements)
     
-    # Replace in paragraphs
-    for para in doc.paragraphs:
-        replace_in_paragraph(para, replacements)
+    # Replace in paragraphs - but skip template tags for inclusion/scope sections
+    for para_idx, para in enumerate(doc.paragraphs):
+        # Check if this paragraph is in inclusion or scope section
+        skip_template_tags = False
+        
+        # Look at surrounding context to determine if we're in inclusion/scope section
+        for check_idx in range(max(0, para_idx - 10), min(len(doc.paragraphs), para_idx + 2)):
+            if check_idx < len(doc.paragraphs):
+                check_text = doc.paragraphs[check_idx].text.strip().lower()
+                if 'inclusions:' in check_text or 'scope:' in check_text:
+                    # Check if current paragraph contains template tags
+                    current_text = para.text.strip()
+                    if any(tag in current_text for tag in ['<sr_no>', '<product_name>', '<product_description>', '<product_specifications>', '<product_image>']):
+                        skip_template_tags = True
+                        print(f"Skipping template tag replacement for paragraph {para_idx} in inclusion/scope section: '{current_text}'")
+                        break
+        
+        replace_in_paragraph(para, replacements, skip_template_tags)
     
     # Replace in tables
     for table_idx, table in enumerate(doc.tables):
@@ -3255,47 +3439,55 @@ def seek_and_replace(doc, replacements):
     return doc
 
 def handle_product_image_tags(doc, fixtures):
-    """Handle <product_image> and <product_image_X> tags by inserting actual images"""
+    """Handle remaining <product_image> and <product_image_X> tags by inserting actual images"""
+    
+    print("=== PROCESSING REMAINING PRODUCT IMAGE TAGS ===")
     
     def replace_image_tag_in_paragraph(paragraph, tag, image_bytes):
         """Replace image tag with actual image in paragraph"""
         if tag in paragraph.text and image_bytes:
             try:
-                # Clear the paragraph
-                paragraph.clear()
+                print(f"Found leftover tag {tag} in paragraph, replacing with image")
                 
-                # Add the image
-                run = paragraph.add_run()
-                img_stream = BytesIO(image_bytes)
-                img_stream.seek(0)
-                run.add_picture(img_stream, width=Mm(IMAGE_WIDTH_MM))
-                
-                # Center the paragraph
-                from docx.enum.text import WD_ALIGN_PARAGRAPH
-                paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                
-                print(f"✅ Replaced {tag} with image in paragraph")
-                return True
+                # Replace the tag text with image
+                text = paragraph.text
+                if tag in text:
+                    # Clear the paragraph
+                    paragraph.clear()
+                    
+                    # Add text before the tag (if any)
+                    before_tag = text.split(tag)[0]
+                    if before_tag.strip():
+                        paragraph.add_run(before_tag)
+                        paragraph.add_run().add_break()
+                    
+                    # Add the image
+                    run = paragraph.add_run()
+                    img_stream = BytesIO(image_bytes)
+                    img_stream.seek(0)
+                    run.add_picture(img_stream, width=Mm(35))  # Use consistent 35mm width
+                    
+                    # Add text after the tag (if any)
+                    after_tag = text.split(tag)[1] if len(text.split(tag)) > 1 else ""
+                    if after_tag.strip():
+                        paragraph.add_run().add_break()
+                        paragraph.add_run(after_tag)
+                    
+                    print(f"✅ Replaced {tag} with image in paragraph")
+                    return True
             except Exception as e:
                 print(f"❌ Error replacing {tag} with image: {e}")
-                # Fallback to placeholder text
-                paragraph.clear()
-                paragraph.add_run(f"[Image: Product {tag}]")
                 return False
         return False
     
-    def replace_image_tag_in_table_cell(cell, tag, image_bytes):
-        """Replace image tag with actual image in table cell"""
-        if tag in cell.text and image_bytes:
-            return _insert_image_in_cell(cell, image_bytes)
-        return False
-    
     # Process each fixture and its image tags
+    tags_processed = 0
     for idx, fixture in enumerate(fixtures):
         sr_no = idx + 1
         image_bytes = fixture.get('image')
         
         if not image_bytes:
+            print(f"⚠️ No image bytes for fixture {sr_no}")
             continue
             
         # Tags to look for
@@ -3306,34 +3498,16 @@ def handle_product_image_tags(doc, fixtures):
         if generic_tag:
             tags_to_process.append(generic_tag)
         
+        print(f"Looking for tags: {tags_to_process} for fixture {sr_no}")
+        
         # Replace in all paragraphs
         for para in doc.paragraphs:
             for tag in tags_to_process:
-                replace_image_tag_in_paragraph(para, tag, image_bytes)
-        
-        # Replace in all tables
-        for table in doc.tables:
-            for row in table.rows:
-                for cell in row.cells:
-                    for tag in tags_to_process:
-                        replace_image_tag_in_table_cell(cell, tag, image_bytes)
-                    
-                    # Also check paragraphs within cells
-                    for para in cell.paragraphs:
-                        for tag in tags_to_process:
-                            replace_image_tag_in_paragraph(para, tag, image_bytes)
-        
-        # Replace in headers and footers
-        for section in doc.sections:
-            for para in section.header.paragraphs:
-                for tag in tags_to_process:
-                    replace_image_tag_in_paragraph(para, tag, image_bytes)
-            for para in section.footer.paragraphs:
-                for tag in tags_to_process:
-                    replace_image_tag_in_paragraph(para, tag, image_bytes)
+                if replace_image_tag_in_paragraph(para, tag, image_bytes):
+                    tags_processed += 1
     
-    print(f"Product image tag processing completed for {len(fixtures)} fixtures")
-    return doc
+    print(f"=== PROCESSED {tags_processed} REMAINING IMAGE TAGS ===")
+    return tags_processed
 
 def _insert_image_in_cell(cell, image_bytes):
     """Insert image into cell, clearing existing content first"""
@@ -4051,6 +4225,250 @@ def handle_multiple_products_in_sections(doc, fixtures):
         import traceback
         traceback.print_exc()
 
+def debug_document_content(doc, stage_name):
+    """Debug function to show document content at different stages"""
+    print(f"=== DOCUMENT CONTENT DEBUG: {stage_name} ===")
+    
+    for i, paragraph in enumerate(doc.paragraphs):
+        text = paragraph.text.strip()
+        if text and any(keyword in text.lower() for keyword in ['fixture', 'product', 'holding', 'pulling', 'minitop']):
+            print(f"Para {i}: '{text[:80]}...'")
+    
+    print(f"=== END {stage_name} DEBUG ===")
+
+def add_page_break_before_terms_and_conditions(doc):
+    """Add page break before T&Cs Applied and Standard Terms and Conditions sections"""
+    try:
+        from docx.enum.text import WD_BREAK
+        
+        print("=== ADDING PAGE BREAKS BEFORE TERMS SECTIONS ===")
+        
+        # Keywords to look for that should trigger page breaks
+        terms_keywords = [
+            "T&Cs Applied:",
+            "T&C Applied:",
+            "Standard Terms and Conditions",
+            "Terms and Conditions", 
+            "STANDARD TERMS AND CONDITIONS",
+            "TERMS AND CONDITIONS"
+        ]
+        
+        page_breaks_added = 0
+        
+        for i, paragraph in enumerate(doc.paragraphs):
+            text = paragraph.text.strip()
+            
+            # Check if this paragraph contains any terms keywords
+            for keyword in terms_keywords:
+                if keyword in text:
+                    print(f"Found terms section at paragraph {i}: '{text[:50]}...'")
+                    
+                    # Add page break before this paragraph
+                    if i > 0:  # Don't add page break if it's the first paragraph
+                        # Insert a new paragraph before this one with a page break
+                        new_para = paragraph.insert_paragraph_before()
+                        run = new_para.add_run()
+                        run.add_break(WD_BREAK.PAGE)
+                        print(f"✅ Added page break before: {keyword}")
+                        page_breaks_added += 1
+                    break
+        
+        print(f"✅ Added {page_breaks_added} page breaks for terms sections")
+        return page_breaks_added > 0
+        
+    except Exception as e:
+        print(f"❌ Error adding page breaks: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+def add_vendor_code_after_quote_table(doc):
+    """Add vendor code paragraph right after the quote table"""
+    try:
+        print("=== ADDING VENDOR CODE AFTER QUOTE TABLE ===")
+        
+        # Find the quote table (should be the pricing table)
+        quote_table = None
+        table_index = -1
+        
+        for table_idx, table in enumerate(doc.tables):
+            if len(table.rows) > 0:
+                # Check first row to identify quote/pricing table
+                first_row_text = ' '.join([cell.text.strip().lower() for cell in table.rows[0].cells])
+                if any(keyword in first_row_text for keyword in ['sr', 'description', 'qty', 'rate', 'amount']):
+                    quote_table = table
+                    table_index = table_idx
+                    print(f"Found quote table at index {table_idx}")
+                    break
+        
+        if quote_table:
+            # Find the paragraph that comes after this table
+            table_element = quote_table._element
+            parent = table_element.getparent()
+            table_position = list(parent).index(table_element)
+            
+            # Create vendor code paragraph
+            from docx.oxml import OxmlElement
+            from docx.oxml.ns import qn
+            
+            vendor_p_elem = OxmlElement('w:p')
+            vendor_r_elem = OxmlElement('w:r')
+            vendor_t_elem = OxmlElement('w:t')
+            vendor_t_elem.text = "Vendor Code: 2000008442"
+            vendor_r_elem.append(vendor_t_elem)
+            vendor_p_elem.append(vendor_r_elem)
+            
+            # Insert the vendor code paragraph right after the table
+            parent.insert(table_position + 1, vendor_p_elem)
+            
+            print("✅ Added vendor code after quote table")
+            return True
+        else:
+            print("❌ Quote table not found")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Error adding vendor code: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+def handle_multiple_products_in_sections_after_replacements(doc, fixtures):
+    """Handle multiple products by replacing template sections with actual product data"""
+    if len(fixtures) <= 1:
+        return  # No need to duplicate for single product
+    
+    try:
+        from docx.shared import Pt, Mm
+        from io import BytesIO
+        
+        print(f"=== HANDLING MULTIPLE PRODUCTS: {len(fixtures)} products ===")
+        
+        # Debug: Print fixture image status
+        for idx, fixture in enumerate(fixtures):
+            sr_no = idx + 1
+            has_image = bool(fixture.get('image'))
+            image_size = len(fixture.get('image', [])) if fixture.get('image') else 0
+            print(f"Fixture {sr_no}: {fixture.get('name')} - Has Image: {has_image}, Image Size: {image_size} bytes")
+        
+        # Find and replace template sections
+        sections_found = []
+        
+        # Scan all paragraphs to find template sections
+        for i, paragraph in enumerate(doc.paragraphs):
+            text = paragraph.text.strip()
+            
+            # Look for the exact template pattern
+            if text == '<sr_no>. <product_name>: <product_description>':
+                # Determine section type by looking at previous paragraphs
+                section_type = "unknown"
+                for j in range(max(0, i-10), i):
+                    check_text = doc.paragraphs[j].text.strip().lower()
+                    if 'inclusions:' in check_text:
+                        section_type = "inclusion"
+                        break
+                    elif 'scope:' in check_text:
+                        section_type = "scope"
+                        break
+                
+                if section_type != "unknown":
+                    # Find the complete 3-paragraph template block
+                    template_paragraphs = []
+                    for j in range(i, min(i + 3, len(doc.paragraphs))):
+                        para_text = doc.paragraphs[j].text.strip()
+                        if (para_text == '<sr_no>. <product_name>: <product_description>' or
+                            para_text == '<product_image>' or
+                            para_text == 'Specifications: <product_specifications>'):
+                            template_paragraphs.append(j)
+                    
+                    if len(template_paragraphs) >= 2:  # At least product name and one other element
+                        sections_found.append({
+                            'section_type': section_type,
+                            'paragraphs': template_paragraphs
+                        })
+                        print(f"Found {section_type} template at paragraphs {template_paragraphs}")
+        
+        # Process each section (in reverse order to maintain paragraph indices)
+        for section in reversed(sections_found):
+            section_type = section['section_type']
+            template_paras = section['paragraphs']
+            
+            print(f"Processing {section_type} section with template paragraphs {template_paras}")
+            
+            # Replace the first template paragraph with all products
+            first_para_idx = template_paras[0]
+            first_para = doc.paragraphs[first_para_idx]
+            
+            # Clear the first paragraph and add all products
+            first_para.clear()
+            
+            # Add all products to the first paragraph
+            for fixture_idx, fixture in enumerate(fixtures):
+                sr_no = fixture_idx + 1
+                
+                # Add product name and description with proper formatting
+                product_text = f"{sr_no}. {fixture.get('name', '')}: {fixture.get('desc', '')}"
+                product_run = first_para.add_run(product_text)
+                
+                # Set font formatting: 16pt, unbold
+                product_run.font.size = Pt(16)
+                product_run.font.bold = False
+                first_para.add_run().add_break()
+                
+                # Add image if available - ENHANCED IMAGE PROCESSING
+                if fixture.get('image'):
+                    try:
+                        print(f"Processing image for {section_type} product {sr_no}...")
+                        img_stream = BytesIO(fixture['image'])
+                        img_stream.seek(0)
+                        
+                        # Create a new run for the image
+                        img_run = first_para.add_run()
+                        
+                        # Add the image with proper size
+                        img_run.add_picture(img_stream, width=Mm(35))
+                        
+                        # Add line break after image
+                        first_para.add_run().add_break()
+                        
+                        print(f"✅ Added image for {section_type} product {sr_no}")
+                    except Exception as img_error:
+                        print(f"❌ Failed to add image for {section_type} product {sr_no}: {img_error}")
+                        import traceback
+                        traceback.print_exc()
+                else:
+                    print(f"⚠️  No image data for {section_type} product {sr_no}")
+                
+                # Add specifications with proper formatting
+                if fixture.get('specifications', '').strip():
+                    spec_text = f"Specifications: {fixture.get('specifications', '')}"
+                    spec_run = first_para.add_run(spec_text)
+                    
+                    # Set font formatting: 16pt, unbold
+                    spec_run.font.size = Pt(16)
+                    spec_run.font.bold = False
+                    first_para.add_run().add_break()
+                
+                # Add spacing between products (except for last one)
+                if fixture_idx < len(fixtures) - 1:
+                    first_para.add_run().add_break()
+            
+            # Remove the remaining template paragraphs
+            for para_idx in reversed(template_paras[1:]):  # Skip the first one we already processed
+                if para_idx < len(doc.paragraphs):
+                    p = doc.paragraphs[para_idx]._element
+                    p.getparent().remove(p)
+            
+            print(f"Replaced {section_type} section with {len(fixtures)} products")
+        
+        print(f"=== PROCESSED {len(sections_found)} TEMPLATE SECTIONS ===")
+        print("=== MULTIPLE PRODUCTS HANDLING COMPLETE ===")
+        
+    except Exception as e:
+        print(f"Error in handle_multiple_products_in_sections_after_replacements: {e}")
+        import traceback
+        traceback.print_exc()
+
 @login_required
 def generate_quotation(request):
     """Generate quotation document with proper image handling and specifications"""
@@ -4074,6 +4492,7 @@ def generate_quotation(request):
             
             print("=== FIXTURE PROCESSING DEBUG ===")
             print(f"POST keys containing 'fixtures': {[k for k in request.POST.keys() if 'fixtures' in k]}")
+            print(f"FILES keys containing 'fixtures': {[k for k in request.FILES.keys() if 'fixtures' in k]}")
             
             while True:
                 name_key = f'fixtures[{fixture_index}][name]'
@@ -4098,20 +4517,45 @@ def generate_quotation(request):
                     'image': None,
                 }
                 
-                # Handle image upload for this fixture
+                # Handle image upload for this fixture - ENHANCED IMAGE PROCESSING
                 image_key = f'fixtures[{fixture_index}][image]'
+                print(f"  Looking for image with key: '{image_key}'")
+                
                 if image_key in request.FILES:
                     uploaded_file = request.FILES[image_key]
+                    print(f"  Found uploaded file: {uploaded_file.name}, size: {uploaded_file.size}")
                     if uploaded_file and uploaded_file.size > 0:
                         try:
                             image_bytes = uploaded_file.read()
                             fixture['image'] = image_bytes
                             fixture['has_image'] = True
-                            print(f"Processed image for fixture {fixture_index + 1}: {len(image_bytes)} bytes")
+                            print(f"✅ Processed image for fixture {fixture_index + 1}: {len(image_bytes)} bytes")
                         except Exception as img_error:
-                            print(f"Error processing image for fixture {fixture_index + 1}: {img_error}")
+                            print(f"❌ Error processing image for fixture {fixture_index + 1}: {img_error}")
                             fixture['has_image'] = False
                             fixture['image'] = None
+                else:
+                    print(f"  No image file found for key: '{image_key}'")
+                    # Check if there's image data from a previous draft or edit
+                    # This handles cases where images might be stored differently
+                    alt_image_keys = [
+                        f'fixture_{fixture_index}_image',
+                        f'image_{fixture_index}',
+                        f'fixtures_{fixture_index}_image'
+                    ]
+                    for alt_key in alt_image_keys:
+                        if alt_key in request.FILES:
+                            uploaded_file = request.FILES[alt_key]
+                            print(f"  Found image with alternative key: '{alt_key}', size: {uploaded_file.size}")
+                            if uploaded_file and uploaded_file.size > 0:
+                                try:
+                                    image_bytes = uploaded_file.read()
+                                    fixture['image'] = image_bytes
+                                    fixture['has_image'] = True
+                                    print(f"✅ Processed image for fixture {fixture_index + 1} with alt key: {len(image_bytes)} bytes")
+                                    break
+                                except Exception as img_error:
+                                    print(f"❌ Error processing alt image for fixture {fixture_index + 1}: {img_error}")
                 
                 fixtures.append(fixture)
                 fixture_index += 1
@@ -4140,6 +4584,72 @@ def generate_quotation(request):
                 })
             
             print(f"=== FINAL FIXTURES COUNT: {len(fixtures)} ===")
+            
+            # ENHANCED: Load images from draft_images folder if not uploaded
+            print("=== LOADING IMAGES FROM DRAFT_IMAGES FOLDER ===")
+            draft_images_path = os.path.join(os.path.dirname(__file__), '..', 'draft_images')
+            available_images = [
+                'download_1.jpg',
+                'download_2.jpg',
+                'download_1_h3ke7w8.jpg',
+                'download_2_Jg786mF.jpg'
+            ]
+            
+            for idx, fixture in enumerate(fixtures):
+                if not fixture.get('has_image') or not fixture.get('image'):
+                    # Try to load image from draft_images folder
+                    image_loaded = False
+                    
+                    # Try multiple naming patterns for each fixture
+                    possible_names = []
+                    if idx == 0:  # First fixture
+                        possible_names = ['download_1.jpg', 'download_1_h3ke7w8.jpg']
+                    elif idx == 1:  # Second fixture
+                        possible_names = ['download_2.jpg', 'download_2_Jg786mF.jpg']
+                    else:  # Additional fixtures
+                        possible_names = [f'download_{idx + 1}.jpg']
+                    
+                    for img_name in possible_names:
+                        img_path = os.path.join(draft_images_path, img_name)
+                        if os.path.exists(img_path):
+                            try:
+                                with open(img_path, 'rb') as img_file:
+                                    image_data = img_file.read()
+                                    fixture['image'] = image_data
+                                    fixture['has_image'] = True
+                                    image_loaded = True
+                                    print(f"✅ Loaded image for fixture {idx + 1} from {img_name}: {len(image_data)} bytes")
+                                    break
+                            except Exception as e:
+                                print(f"❌ Error loading image {img_path}: {e}")
+                    
+                    if not image_loaded:
+                        print(f"⚠️  No image found for fixture {idx + 1}")
+                        # Try to find any available image as fallback
+                        for img_name in available_images:
+                            img_path = os.path.join(draft_images_path, img_name)
+                            if os.path.exists(img_path):
+                                try:
+                                    with open(img_path, 'rb') as img_file:
+                                        image_data = img_file.read()
+                                        fixture['image'] = image_data
+                                        fixture['has_image'] = True
+                                        print(f"✅ Loaded fallback image for fixture {idx + 1} from {img_name}: {len(image_data)} bytes")
+                                        break
+                                except Exception as e:
+                                    print(f"❌ Error loading fallback image {img_path}: {e}")
+                else:
+                    print(f"✅ Fixture {idx + 1} already has image: {len(fixture.get('image', []))} bytes")
+            
+            print("=== IMAGE LOADING COMPLETE ===")
+            
+            # Final verification of image data
+            print("=== FINAL IMAGE VERIFICATION ===")
+            for idx, fixture in enumerate(fixtures):
+                has_image = fixture.get('has_image', False)
+                image_size = len(fixture.get('image', [])) if fixture.get('image') else 0
+                print(f"Fixture {idx + 1}: has_image={has_image}, image_size={image_size} bytes")
+            print("=== END IMAGE VERIFICATION ===")
             
             # Build content for tag-based replacements with enhanced inclusion section
             inclusion_items = []
@@ -4187,9 +4697,10 @@ def generate_quotation(request):
                     spec_item = f"{idx}. {fixture['name']}:\n{fixture['specifications']}"
                     specification_items.append(spec_item)
             
-            # Build final content strings - SEPARATE EACH FIXTURE WITH DOUBLE LINE BREAKS
-            inclusion_content = "\n\n".join([item['text'] for item in inclusion_items]) if inclusion_items else "Fixtures as per discussion"
-            scope_content = "\n".join(scope_items) if scope_items else "Design & manufacturing of fixtures as per discussion"
+            # Build final content strings - DISABLE inclusion/scope content to prevent duplication
+            # The handle_multiple_products_in_sections_after_replacements function will handle this instead
+            inclusion_content = ""  # Empty - let multiple products handler do the work
+            scope_content = ""      # Empty - let multiple products handler do the work
             specification_content = "\n\n".join(specification_items) if specification_items else "Specifications as per discussion and drawings."
             
             # Prepare fixtures data for database (without image bytes)
@@ -4418,22 +4929,48 @@ def generate_quotation(request):
                     replacements["<product_word_price>"] = fixture.get('words', '')
             
             print(f"=== NEW TAG SYSTEM: Created {len(replacements)} replacement tags ===")
+            
+            # Debug: Show what content is being replaced
+            print("=== CONTENT BEING REPLACED ===")
+            if replacements.get("<inclusion>"):
+                print(f"<inclusion> content: '{replacements['<inclusion>'][:100]}...'")
+            else:
+                print("<inclusion> content: EMPTY (good - prevents duplication)")
+                
+            if replacements.get("<scope>"):
+                print(f"<scope> content: '{replacements['<scope>'][:100]}...'")
+            else:
+                print("<scope> content: EMPTY (good - prevents duplication)")
+            
+            # Show product-specific tags
             for key in sorted(replacements.keys()):
-                if key.startswith('<') and key.endswith('>'):
+                if 'product_name' in key or 'product_description' in key:
                     print(f"Tag: {key} = '{str(replacements[key])[:50]}...'")
             print("=== END TAG LIST ===")
             
             # Apply text replacements using the advanced seek_and_replace function
             doc = seek_and_replace(doc, replacements)
             
-            # Handle multiple products in inclusion and scope sections
-            handle_multiple_products_in_sections(doc, fixtures)
+            # Debug: Show content after tag replacement
+            debug_document_content(doc, "AFTER TAG REPLACEMENT")
             
-            # Handle product image tags with actual images
-            handle_product_image_tags(doc, fixtures)
+            # Handle multiple products in inclusion and scope sections AFTER text replacements
+            handle_multiple_products_in_sections_after_replacements(doc, fixtures)
             
-            # Insert images in inclusion section after text replacements (legacy support)
-            insert_images_in_inclusion_section(doc, fixtures)
+            # Debug: Show content after multiple products handling
+            debug_document_content(doc, "AFTER MULTIPLE PRODUCTS HANDLING")
+            
+            # Add page break before terms and conditions sections
+            add_page_break_before_terms_and_conditions(doc)
+            
+            # Add vendor code after quote table
+            add_vendor_code_after_quote_table(doc)
+            
+            # Disable product image tags processing to prevent duplicate images - this was causing the extra image
+            # handle_product_image_tags(doc, fixtures)
+            
+            # Legacy image insertion disabled - now handled in handle_multiple_products_in_sections_after_replacements
+            # insert_images_in_inclusion_section(doc, fixtures)
             
             # CRITICAL: Handle pricing table AFTER all text replacements to prevent interference
             print("=== STARTING TABLE PROCESSING ===")
@@ -5019,7 +5556,7 @@ def quotation_download(request, quotation_id):
         import traceback
         traceback.print_exc()
         return redirect('dashboard:quotation_management')
-
+        
 @login_required
 def process_po_pdf_ajax(request):
     """
@@ -5372,3 +5909,501 @@ def cleanup_old_notifications_ajax(request):
             'success': False,
             'error': str(e)
         })
+
+# ============================================================================
+# AUTOMATIC NOTIFICATION SYSTEM
+# ============================================================================
+
+def run_daily_notifications(request):
+    """
+    Daily notification system for project management.
+    Sends reminders to sales/managers for due projects and escalates overdue projects to admins.
+    
+    URL: /automation/send-emails/?secret=YOUR_SECRET_KEY
+    """
+    from django.http import JsonResponse
+    from django.core.mail import send_mail
+    from django.utils import timezone
+    from django.conf import settings
+    
+    # 1. SECURITY CHECK
+    secret = request.GET.get('secret')
+    if secret != settings.CRON_SECRET_KEY:
+        return JsonResponse({'error': 'Unauthorized'}, status=403)
+    
+    today = timezone.now().date()
+    logs = []
+    
+    # ----------------------------------------------------
+    # TASK A: Remind Sales/Managers (Purchase Orders Due Today)
+    # ----------------------------------------------------
+    due_today_pos = PurchaseOrder.objects.filter(
+        delivery_date=today
+    ).exclude(
+        due_days__lt=0  # Exclude overdue orders (they go to admin)
+    )
+    
+    for po in due_today_pos:
+        # Send to sales person if assigned
+        if po.sales_person and po.sales_person.email:
+            try:
+                send_mail(
+                    subject=f"📅 Reminder: PO '{po.po_number}' is due Today!",
+                    message=f"Hello {po.sales_person.get_full_name() or po.sales_person.username},\n\n"
+                           f"This is a reminder that Purchase Order '{po.po_number}' for {po.customer_name} is due today ({po.delivery_date}).\n\n"
+                           f"Order Details:\n"
+                           f"- PO Number: {po.po_number}\n"
+                           f"- Customer: {po.customer_name}\n"
+                           f"- Order Value: ₹{po.order_value:,.2f}\n"
+                           f"- Delivery Date: {po.delivery_date}\n\n"
+                           f"Please update the status and ensure timely delivery.\n\n"
+                           f"Best regards,\nProject Management System",
+                    from_email=settings.EMAIL_HOST_USER,
+                    recipient_list=[po.sales_person.email],
+                    fail_silently=False,
+                )
+                logs.append(f"Reminder sent to Sales ({po.sales_person.email}): PO {po.po_number}")
+            except Exception as e:
+                logs.append(f"Failed to send to Sales {po.sales_person.email}: {e}")
+        
+        # Send to project manager if assigned
+        if po.project_manager and po.project_manager.email:
+            try:
+                send_mail(
+                    subject=f"📅 Reminder: PO '{po.po_number}' is due Today!",
+                    message=f"Hello {po.project_manager.get_full_name() or po.project_manager.username},\n\n"
+                           f"This is a reminder that Purchase Order '{po.po_number}' for {po.customer_name} is due today ({po.delivery_date}).\n\n"
+                           f"Order Details:\n"
+                           f"- PO Number: {po.po_number}\n"
+                           f"- Customer: {po.customer_name}\n"
+                           f"- Order Value: ₹{po.order_value:,.2f}\n"
+                           f"- Delivery Date: {po.delivery_date}\n\n"
+                           f"Please coordinate with the team to ensure timely delivery.\n\n"
+                           f"Best regards,\nProject Management System",
+                    from_email=settings.EMAIL_HOST_USER,
+                    recipient_list=[po.project_manager.email],
+                    fail_silently=False,
+                )
+                logs.append(f"Reminder sent to Project Manager ({po.project_manager.email}): PO {po.po_number}")
+            except Exception as e:
+                logs.append(f"Failed to send to Project Manager {po.project_manager.email}: {e}")
+    
+    # ----------------------------------------------------
+    # TASK B: Remind for Invoice Payments Due Today
+    # ----------------------------------------------------
+    due_today_invoices = Invoice.objects.filter(
+        payment_due_date=today
+    ).exclude(
+        due_days__lt=0  # Exclude overdue invoices (they go to admin)
+    )
+    
+    for invoice in due_today_invoices:
+        # Send to sales person from related purchase order
+        if invoice.purchase_order and invoice.purchase_order.sales_person and invoice.purchase_order.sales_person.email:
+            try:
+                send_mail(
+                    subject=f"💰 Payment Reminder: Invoice '{invoice.invoice_number}' payment due Today!",
+                    message=f"Hello {invoice.purchase_order.sales_person.get_full_name() or invoice.purchase_order.sales_person.username},\n\n"
+                           f"This is a reminder that payment for Invoice '{invoice.invoice_number}' is due today ({invoice.payment_due_date}).\n\n"
+                           f"Invoice Details:\n"
+                           f"- Invoice Number: {invoice.invoice_number}\n"
+                           f"- Customer: {invoice.customer_name}\n"
+                           f"- Order Value: ₹{invoice.order_value:,.2f}\n"
+                           f"- Payment Due Date: {invoice.payment_due_date}\n\n"
+                           f"Please follow up with the customer for payment.\n\n"
+                           f"Best regards,\nProject Management System",
+                    from_email=settings.EMAIL_HOST_USER,
+                    recipient_list=[invoice.purchase_order.sales_person.email],
+                    fail_silently=False,
+                )
+                logs.append(f"Payment reminder sent to Sales ({invoice.purchase_order.sales_person.email}): Invoice {invoice.invoice_number}")
+            except Exception as e:
+                logs.append(f"Failed to send payment reminder to Sales {invoice.purchase_order.sales_person.email}: {e}")
+    
+    # ----------------------------------------------------
+    # TASK C: Escalate to Admin (Overdue Purchase Orders)
+    # ----------------------------------------------------
+    overdue_pos = PurchaseOrder.objects.filter(
+        delivery_date__lt=today
+    ).exclude(
+        due_days__gte=0  # Only include truly overdue orders
+    )
+    
+    if overdue_pos.exists():
+        # Get all admin emails
+        admin_emails = list(
+            User.objects.filter(
+                userprofile__roles__contains='admin'
+            ).values_list('email', flat=True)
+        )
+        admin_emails = [email for email in admin_emails if email]  # Remove empty emails
+        
+        if admin_emails:
+            # Create overdue PO report
+            po_lines = []
+            for po in overdue_pos:
+                days_overdue = abs(po.due_days) if po.due_days else 'Unknown'
+                po_lines.append(
+                    f"- PO {po.po_number} | Customer: {po.customer_name} | "
+                    f"Due: {po.delivery_date} | Overdue: {days_overdue} days | "
+                    f"Value: ₹{po.order_value:,.2f}"
+                )
+            
+            report_body = (
+                f"⚠️ URGENT: The following {len(overdue_pos)} Purchase Orders are OVERDUE:\n\n" +
+                "\n".join(po_lines) +
+                f"\n\nTotal Overdue Value: ₹{sum(po.order_value for po in overdue_pos):,.2f}\n\n"
+                f"Please take immediate action to resolve these delays.\n\n"
+                f"Best regards,\nProject Management System"
+            )
+            
+            try:
+                send_mail(
+                    subject=f"🚨 ESCALATION: {len(overdue_pos)} Purchase Orders Overdue",
+                    message=report_body,
+                    from_email=settings.EMAIL_HOST_USER,
+                    recipient_list=admin_emails,
+                    fail_silently=False,
+                )
+                logs.append(f"Overdue PO escalation sent to {len(admin_emails)} Admins")
+            except Exception as e:
+                logs.append(f"Failed to send PO escalation report: {e}")
+    
+    # ----------------------------------------------------
+    # TASK D: Escalate to Admin (Overdue Invoice Payments)
+    # ----------------------------------------------------
+    overdue_invoices = Invoice.objects.filter(
+        payment_due_date__lt=today
+    ).exclude(
+        due_days__gte=0  # Only include truly overdue invoices
+    )
+    
+    if overdue_invoices.exists():
+        # Get all admin emails
+        admin_emails = list(
+            User.objects.filter(
+                userprofile__roles__contains='admin'
+            ).values_list('email', flat=True)
+        )
+        admin_emails = [email for email in admin_emails if email]  # Remove empty emails
+        
+        if admin_emails:
+            # Create overdue invoice report
+            invoice_lines = []
+            for invoice in overdue_invoices:
+                days_overdue = abs(invoice.due_days) if invoice.due_days else 'Unknown'
+                invoice_lines.append(
+                    f"- Invoice {invoice.invoice_number} | Customer: {invoice.customer_name} | "
+                    f"Due: {invoice.payment_due_date} | Overdue: {days_overdue} days | "
+                    f"Value: ₹{invoice.order_value:,.2f}"
+                )
+            
+            report_body = (
+                f"💰 URGENT: The following {len(overdue_invoices)} Invoice Payments are OVERDUE:\n\n" +
+                "\n".join(invoice_lines) +
+                f"\n\nTotal Overdue Amount: ₹{sum(invoice.order_value for invoice in overdue_invoices):,.2f}\n\n"
+                f"Please follow up immediately for payment collection.\n\n"
+                f"Best regards,\nProject Management System"
+            )
+            
+            try:
+                send_mail(
+                    subject=f"💸 ESCALATION: {len(overdue_invoices)} Invoice Payments Overdue",
+                    message=report_body,
+                    from_email=settings.EMAIL_HOST_USER,
+                    recipient_list=admin_emails,
+                    fail_silently=False,
+                )
+                logs.append(f"Overdue invoice escalation sent to {len(admin_emails)} Admins")
+            except Exception as e:
+                logs.append(f"Failed to send invoice escalation report: {e}")
+    
+    # Return summary
+    return JsonResponse({
+        'status': 'success',
+        'date': today.strftime('%Y-%m-%d'),
+        'actions': logs,
+        'summary': {
+            'due_today_pos': due_today_pos.count(),
+            'due_today_invoices': due_today_invoices.count(),
+            'overdue_pos': overdue_pos.count() if overdue_pos.exists() else 0,
+            'overdue_invoices': overdue_invoices.count() if overdue_invoices.exists() else 0,
+        }
+    })
+
+@login_required
+def global_search_ajax(request):
+    """Global search across all modules for admin users"""
+    # Only allow admin/manager users to use global search
+    user_role = request.user.userprofile.get_roles_list()
+    if user_role not in ['admin', 'manager']:
+        return JsonResponse({'success': False, 'error': 'Permission denied'})
+    
+    query = request.GET.get('q', '').strip()
+    if len(query) < 2:
+        return JsonResponse({'success': True, 'results': []})
+    
+    results = []
+    
+    try:
+        # Search Purchase Orders
+        pos = PurchaseOrder.objects.filter(
+            Q(po_number__icontains=query) |
+            Q(customer_name__icontains=query) |
+            Q(company__company__company_name__icontains=query)
+        ).select_related('company__company')[:5]
+        
+        for po in pos:
+            results.append({
+                'title': f'PO: {po.po_number}',
+                'subtitle': f'{po.customer_name} - ₹{po.order_value}',
+                'module': 'Purchase Orders',
+                'url': f'/purchase-orders/edit/{po.id}/'
+            })
+        
+        # Search Invoices
+        invoices = Invoice.objects.filter(
+            Q(invoice_number__icontains=query) |
+            Q(customer_name__icontains=query) |
+            Q(company__company__company_name__icontains=query)
+        ).select_related('company__company')[:5]
+        
+        for invoice in invoices:
+            results.append({
+                'title': f'Invoice: {invoice.invoice_number}',
+                'subtitle': f'{invoice.customer_name} - ₹{invoice.order_value}',
+                'module': 'Invoices',
+                'url': f'/invoices/edit/{invoice.id}/'
+            })
+        
+        # Search Inquiries
+        inquiries = InquiryHandler.objects.filter(
+            Q(create_id__icontains=query) |
+            Q(opportunity_id__icontains=query) |
+            Q(quote_no__icontains=query) |
+            Q(customer_name__icontains=query) |
+            Q(company__company__company_name__icontains=query)
+        ).select_related('company__company')[:5]
+        
+        for inquiry in inquiries:
+            results.append({
+                'title': f'Inquiry: {inquiry.create_id}',
+                'subtitle': f'{inquiry.customer_name} - {inquiry.status}',
+                'module': 'Inquiry Handler',
+                'url': f'/inquiry-handler/edit/{inquiry.id}/'
+            })
+        
+        # Search Quotations
+        quotations = Quotation.objects.filter(
+            Q(quote_number__icontains=query) |
+            Q(firm__icontains=query) |
+            Q(to_person__icontains=query)
+        )[:5]
+        
+        for quotation in quotations:
+            results.append({
+                'title': f'Quotation: {quotation.quote_number}',
+                'subtitle': f'{quotation.firm} - {quotation.status}',
+                'module': 'Quotations',
+                'url': f'/quotation/edit/{quotation.id}/'
+            })
+        
+        # Search Contacts
+        contacts = Contact.objects.filter(
+            Q(contact_name__icontains=query) |
+            Q(customer_name__icontains=query) |
+            Q(company__company_name__icontains=query) |
+            Q(email_1__icontains=query)
+        ).select_related('company')[:5]
+        
+        for contact in contacts:
+            results.append({
+                'title': f'Contact: {contact.contact_name or contact.customer_name}',
+                'subtitle': f'{contact.company.company_name if contact.company else "No Company"} - {contact.email_1}',
+                'module': 'Contacts',
+                'url': f'/contacts/edit/{contact.id}/'
+            })
+        
+        # Search Users (for admin)
+        users = User.objects.filter(
+            Q(username__icontains=query) |
+            Q(first_name__icontains=query) |
+            Q(last_name__icontains=query) |
+            Q(email__icontains=query)
+        )[:5]
+        
+        for user in users:
+            results.append({
+                'title': f'User: {user.username}',
+                'subtitle': f'{user.get_full_name()} - {user.email}',
+                'module': 'User Management',
+                'url': f'/users/edit/{user.id}/'
+            })
+        
+        # Sort results by relevance (exact matches first)
+        def sort_key(item):
+            title_lower = item['title'].lower()
+            query_lower = query.lower()
+            if query_lower in title_lower:
+                return 0 if title_lower.startswith(query_lower) else 1
+            return 2
+        
+        results.sort(key=sort_key)
+        
+        # Limit total results
+        results = results[:15]
+        
+        return JsonResponse({
+            'success': True,
+            'results': results,
+            'total': len(results)
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Search error: {str(e)}'
+        })
+
+@login_required
+def sales_data_management_view(request):
+    """Sales data management page with month-wise invoice calculations (Financial Year)"""
+    from django.db.models import Sum, Count
+    from datetime import datetime, timedelta
+    from calendar import month_name
+    import calendar
+    
+    def format_indian_currency(amount):
+        """Format number in Indian currency style (e.g., 4,21,50,000)"""
+        if amount == 0:
+            return "0"
+        
+        # Convert to float for formatting, then back to string
+        amount_float = float(amount)
+        amount_str = f"{amount_float:,.0f}"  # No decimal places for currency display
+        
+        return amount_str
+    
+    # Get current year or year from request
+    current_year = datetime.now().year
+    selected_year = int(request.GET.get('year', current_year))
+    
+    # Calculate month-wise sales data (Financial Year: April to March) - Using Invoice Data
+    monthly_sales = []
+    total_sales = 0
+    total_invoices = 0
+    
+    # Financial year months order: April(4) to March(3+12)
+    financial_year_months = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
+    
+    for month in financial_year_months:
+        # For months 1-3, they belong to the next calendar year
+        if month <= 3:
+            year_to_query = selected_year + 1
+        else:
+            year_to_query = selected_year
+            
+        # Get invoices for this month and year based on invoice_date
+        month_invoices = Invoice.objects.filter(
+            invoice_date__year=year_to_query,
+            invoice_date__month=month
+        )
+        
+        # Calculate totals for this month
+        month_total = month_invoices.aggregate(
+            total_value=Sum('order_value'),
+            invoice_count=Count('id')
+        )
+        
+        month_value = month_total['total_value'] or 0
+        month_count = month_total['invoice_count'] or 0
+        
+        monthly_sales.append({
+            'month_number': month,
+            'month_name': month_name[month],
+            'invoice_count': month_count,
+            'total_value': month_value,
+            'formatted_value': format_indian_currency(month_value)
+        })
+        
+        total_sales += month_value
+        total_invoices += month_count
+    
+    # Get top performing months
+    top_months = sorted(monthly_sales, key=lambda x: x['total_value'], reverse=True)[:3]
+    
+    # Calculate year-over-year comparison (Financial Year) - Using Invoice Data
+    # Previous financial year: Apr (selected_year-1) to Mar (selected_year)
+    previous_year_total = 0
+    
+    # April to December of previous year
+    previous_year_total += Invoice.objects.filter(
+        invoice_date__year=selected_year - 1,
+        invoice_date__month__in=[4, 5, 6, 7, 8, 9, 10, 11, 12]
+    ).aggregate(total=Sum('order_value'))['total'] or 0
+    
+    # January to March of current year
+    previous_year_total += Invoice.objects.filter(
+        invoice_date__year=selected_year,
+        invoice_date__month__in=[1, 2, 3]
+    ).aggregate(total=Sum('order_value'))['total'] or 0
+    
+    yoy_growth = 0
+    if previous_year_total > 0:
+        yoy_growth = ((total_sales - previous_year_total) / previous_year_total) * 100
+    
+    # Get available years for dropdown (based on invoice dates)
+    available_years = Invoice.objects.dates('invoice_date', 'year').values_list('invoice_date__year', flat=True)
+    available_years = sorted(set(available_years), reverse=True)
+    
+    # Ensure current year is always available even if no data exists
+    if current_year not in available_years:
+        available_years = list(available_years) + [current_year]
+        available_years = sorted(set(available_years), reverse=True)
+    
+    # Ensure 2025 is available for FY 2025-26
+    if 2025 not in available_years:
+        available_years = list(available_years) + [2025]
+        available_years = sorted(set(available_years), reverse=True)
+    
+    # Calculate quarterly data
+    quarterly_data = []
+    quarters = [
+        {'name': 'Q1 (Apr-Jun)', 'months': [4, 5, 6]},
+        {'name': 'Q2 (Jul-Sep)', 'months': [7, 8, 9]},
+        {'name': 'Q3 (Oct-Dec)', 'months': [10, 11, 12]},
+        {'name': 'Q4 (Jan-Mar)', 'months': [1, 2, 3]}
+    ]
+    
+    for quarter in quarters:
+        quarter_total = sum(
+            month['total_value'] for month in monthly_sales 
+            if month['month_number'] in quarter['months']
+        )
+        quarter_count = sum(
+            month['invoice_count'] for month in monthly_sales 
+            if month['month_number'] in quarter['months']
+        )
+        
+        quarterly_data.append({
+            'name': quarter['name'],
+            'total_value': quarter_total,
+            'invoice_count': quarter_count,
+            'formatted_value': format_indian_currency(quarter_total)
+        })
+    
+    context = {
+        'monthly_sales': monthly_sales,
+        'total_sales': total_sales,
+        'formatted_total_sales': format_indian_currency(total_sales),
+        'total_invoices': total_invoices,  # Now represents total invoices
+        'selected_year': selected_year,
+        'available_years': available_years,
+        'top_months': top_months,
+        'yoy_growth': round(yoy_growth, 2),
+        'previous_year_total': format_indian_currency(previous_year_total),
+        'quarterly_data': quarterly_data,
+        'current_month': datetime.now().month,
+    }
+    
+    return render(request, 'dashboard/sales_data_management.html', context)

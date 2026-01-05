@@ -46,6 +46,34 @@
     gap: 0.75rem !important;
 }
 
+/* User Status Dropdown Styling */
+.user-status-dropdown {
+    border: 1px solid #dee2e6 !important;
+    border-radius: 0.375rem !important;
+    font-size: 0.75rem !important;
+    padding: 0.25rem 0.5rem !important;
+    background-color: #fff !important;
+    transition: all 0.2s ease !important;
+}
+
+.user-status-dropdown:focus {
+    border-color: #86b7fe !important;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
+}
+
+.user-status-dropdown:disabled {
+    background-color: #e9ecef !important;
+    opacity: 0.65 !important;
+}
+
+/* Action buttons alignment */
+.action-buttons {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.25rem !important;
+    flex-wrap: wrap !important;
+}
+
 /* Page Header Improvements */
 .page-header {
     display: flex !important;
@@ -111,6 +139,15 @@
                 </div>
             </div>
             <div class="stat-card">
+                <div class="stat-icon bg-secondary">
+                    <i class="bi bi-person-x"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ inactive_users }}</h3>
+                    <p>Inactive Users</p>
+                </div>
+            </div>
+            <div class="stat-card">
                 <div class="stat-icon bg-info">
                     <i class="bi bi-briefcase"></i>
                 </div>
@@ -128,24 +165,6 @@
                     <p>Project Managers</p>
                 </div>
             </div>
-        </div>
-
-        <!-- Search Section -->
-        <div class="search-section">
-            <form method="GET" class="search-form">
-                <div class="search-input-group">
-                    <i class="bi bi-search"></i>
-                    <input type="text" 
-                           name="search" 
-                           value="{{ search_query }}" 
-                           placeholder="Search users by name, username, or email..." 
-                           class="form-control">
-                    <button type="submit" class="btn btn-outline-primary">Search</button>
-                    {% if search_query %}
-                        <a href="{% url 'dashboard:user_management' %}" class="btn btn-outline-secondary">Clear</a>
-                    {% endif %}
-                </div>
-            </form>
         </div>
 
         <!-- Users Table -->
@@ -248,10 +267,10 @@
                             <ul class="pagination justify-content-center">
                                 {% if page_obj.has_previous %}
                                     <li class="page-item">
-                                        <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}">First</a>
+                                        <a class="page-link" href="?page=1">First</a>
                                     </li>
                                     <li class="page-item">
-                                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">Previous</a>
+                                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
                                     </li>
                                 {% endif %}
 
@@ -263,10 +282,10 @@
 
                                 {% if page_obj.has_next %}
                                     <li class="page-item">
-                                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">Next</a>
+                                        <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
                                     </li>
                                     <li class="page-item">
-                                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}">Last</a>
+                                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
                                     </li>
                                 {% endif %}
                             </ul>
@@ -289,4 +308,11 @@
 </div>
 
 
+{% endblock %}
+
+{% csrf_token %}
+{% block extra_js %}
+<script>
+// No additional JavaScript needed for user management table
+</script>
 {% endblock %}

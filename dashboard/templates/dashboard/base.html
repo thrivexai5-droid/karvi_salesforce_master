@@ -60,6 +60,12 @@
                                         <span>Purchase Orders</span>
                                     </a>
                                 </li>
+                                <li class="nav-item-header">
+                                    <a href="{% url 'dashboard:sales_data_management' %}" class="nav-link-header">
+                                        <i class="bi bi-graph-up-arrow"></i>
+                                        <span>Sales Data</span>
+                                    </a>
+                                </li>
                             {% endif %}
 
                             <!-- Inquiry Handler - Check specific permission -->
@@ -169,6 +175,12 @@
                             <a href="{% url 'dashboard:purchase_order_management' %}" class="nav-link-mobile">
                                 <i class="bi bi-file-earmark-text"></i>
                                 <span>Purchase Orders</span>
+                            </a>
+                        </li>
+                        <li class="nav-item-mobile">
+                            <a href="{% url 'dashboard:sales_data_management' %}" class="nav-link-mobile">
+                                <i class="bi bi-graph-up-arrow"></i>
+                                <span>Sales Data</span>
                             </a>
                         </li>
                     {% endif %}

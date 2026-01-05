@@ -142,3 +142,14 @@ LOGOUT_REDIRECT_URL = '/login/'
 # Get your API key from: https://console.mistral.ai/
 # Add it to your .env file: MISTRAL_API_KEY=your-actual-key-here
 MISTRAL_API_KEY = os.getenv('MISTRAL_API_KEY', 'your-actual-mistral-api-key-here')
+
+# Email Configuration
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'your_company_email@gmail.com')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', 'your_app_password')
+
+# Secret key for automation URL (add this to your .env file)
+CRON_SECRET_KEY = os.getenv('CRON_SECRET_KEY', 'MySecureKey2026')

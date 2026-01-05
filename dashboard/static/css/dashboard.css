@@ -1779,7 +1779,7 @@ body.dashboard-page:has(.dashboard-container-new) {
 }
 
 .form-actions {
-    display: flex;
+    display: grid;
     gap: 1rem;
     padding-top: 2rem;
     border-top: 1px solid #e5e7eb;
@@ -2212,7 +2212,7 @@ body.dashboard-page:has(.dashboard-container-new) {
 }
 
 .form-actions {
-    display: flex;
+    display: grid;
     gap: 1rem;
     padding-top: 1rem;
     border-top: 2px solid #f0f0f0;

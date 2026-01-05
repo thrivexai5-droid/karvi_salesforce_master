@@ -11,6 +11,9 @@ urlpatterns = [
     path('users/edit/<int:user_id>/', views.user_edit_view, name='user_edit'),
     path('users/delete/<int:user_id>/', views.user_delete_view, name='user_delete'),
     
+    # Sales Data Management
+    path('sales-data/', views.sales_data_management_view, name='sales_data_management'),
+    
     # Contact Management URLs
     path('contacts/', views.contact_management_view, name='contact_management'),
     path('contacts/create/', views.contact_create_view, name='contact_create'),
@@ -58,6 +61,7 @@ urlpatterns = [
     
     # AJAX endpoints
     path('ajax/get-company-data/', views.get_company_data_ajax, name='get_company_data_ajax'),
+    path('ajax/global-search/', views.global_search_ajax, name='global_search_ajax'),
     
     # Notification URLs
     path('notifications/', views.notifications_view, name='notifications'),
@@ -77,4 +81,7 @@ urlpatterns = [
     path('ajax/get-purchase-order-items/', views.get_purchase_order_items_ajax, name='get_purchase_order_items_ajax'),
     path('ajax/search-customers/', views.search_customers_ajax, name='search_customers_ajax'),
     path('ajax/fetch-quotation-data/', views.fetch_quotation_data_ajax, name='fetch_quotation_data_ajax'),
+    
+    # Automatic Notification System
+    path('automation/send-emails/', views.run_daily_notifications, name='email_trigger'),
 ]

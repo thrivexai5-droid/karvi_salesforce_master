@@ -10,8 +10,10 @@
 {
     "totalValue": {{ total_value_raw|default:0 }},
     "paidTotalValue": {{ paid_total_value_raw|default:0 }},
+    "salesClosedValue": {{ sales_closed_value_raw|default:0 }},
     "totalValueFormatted": "{{ total_value|default:'0' }}",
     "paidTotalValueFormatted": "{{ paid_total_value|default:'0' }}",
+    "salesClosedValueFormatted": "{{ sales_closed_value|default:'0' }}",
     "maxPaymentDueDate": "{{ max_date|default:'—' }}"
 }
 </script>
@@ -104,7 +106,7 @@
         // Chart 1 - Sales Distribution (Dynamic Data)
         const chart1Options = {
             ...commonOptions,
-            series: [35, dashboardData.totalValue, dashboardData.paidTotalValue],
+            series: [dashboardData.salesClosedValue, dashboardData.totalValue, dashboardData.paidTotalValue],
             labels: ['Sales closed', 'UEOB', 'Collection'],
             colors: ['#00B0F0', '#FFFF00', '#FF0000'],
             tooltip: {
@@ -116,7 +118,9 @@
                 },
                 y: {
                     formatter: function (val, opts) {
-                        if (opts.seriesIndex === 1) {
+                        if (opts.seriesIndex === 0) {
+                            return 'Sales closed: ₹' + dashboardData.salesClosedValueFormatted;
+                        } else if (opts.seriesIndex === 1) {
                             return 'UEOB: ₹' + dashboardData.totalValueFormatted;
                         } else if (opts.seriesIndex === 2) {
                             return 'Collection: ₹' + dashboardData.paidTotalValueFormatted;

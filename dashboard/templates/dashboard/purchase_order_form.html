@@ -126,7 +126,7 @@
                 <!-- Sales Person and Project Manager Row -->
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="{{ form.sales_person.id_for_label }}"><i class="bi bi-person-badge"></i> Sales Person</label>
+                        <label for="{{ form.sales_person.id_for_label }}"><i class="bi bi-person-badge"></i> Sales Person *</label>
                         {{ form.sales_person }}
                         {% if form.sales_person.errors %}
                             <div class="error-msg">{{ form.sales_person.errors.0 }}</div>
@@ -134,7 +134,7 @@
                     </div>
                     
                     <div class="form-group">
-                        <label for="{{ form.sales_percentage.id_for_label }}"><i class="bi bi-percent"></i> Sales Percentage (%)</label>
+                        <label for="{{ form.sales_percentage.id_for_label }}"><i class="bi bi-percent"></i> Sales Percentage (%) *</label>
                         {{ form.sales_percentage }}
                         {% if form.sales_percentage.errors %}
                             <div class="error-msg">{{ form.sales_percentage.errors.0 }}</div>
@@ -144,7 +144,7 @@
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="{{ form.project_manager.id_for_label }}"><i class="bi bi-person-gear"></i> Project Manager</label>
+                        <label for="{{ form.project_manager.id_for_label }}"><i class="bi bi-person-gear"></i> Project Manager *</label>
                         {{ form.project_manager }}
                         {% if form.project_manager.errors %}
                             <div class="error-msg">{{ form.project_manager.errors.0 }}</div>
@@ -152,7 +152,7 @@
                     </div>
                     
                     <div class="form-group">
-                        <label for="{{ form.project_manager_percentage.id_for_label }}"><i class="bi bi-percent"></i> Project Manager Percentage (%)</label>
+                        <label for="{{ form.project_manager_percentage.id_for_label }}"><i class="bi bi-percent"></i> Project Manager Percentage (%) *</label>
                         {{ form.project_manager_percentage }}
                         {% if form.project_manager_percentage.errors %}
                             <div class="error-msg">{{ form.project_manager_percentage.errors.0 }}</div>
@@ -738,6 +738,54 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Form submission handler to save items
     document.getElementById('po-form').addEventListener('submit', function(e) {
+        // Validate required fields
+        const customerName = document.getElementById('{{ form.customer_name_select.id_for_label }}').value.trim();
+        const selectedCustomerId = document.getElementById('{{ form.selected_customer_id.id_for_label }}').value;
+        const salesPerson = document.getElementById('{{ form.sales_person.id_for_label }}').value;
+        const projectManager = document.getElementById('{{ form.project_manager.id_for_label }}').value;
+        const salesPercentage = document.getElementById('{{ form.sales_percentage.id_for_label }}').value.trim();
+        const projectManagerPercentage = document.getElementById('{{ form.project_manager_percentage.id_for_label }}').value.trim();
+        
+        // Check Customer Name
+        if (!customerName || !selectedCustomerId) {
+            e.preventDefault();
+            alert('Please select a Customer Name. This field is required.');
+            document.getElementById('{{ form.customer_name_select.id_for_label }}').focus();
+            return false;
+        }
+        
+        // Check Sales Person
+        if (!salesPerson) {
+            e.preventDefault();
+            alert('Please select a Sales Person. This field is required.');
+            document.getElementById('{{ form.sales_person.id_for_label }}').focus();
+            return false;
+        }
+        
+        // Check Project Manager
+        if (!projectManager) {
+            e.preventDefault();
+            alert('Please select a Project Manager. This field is required.');
+            document.getElementById('{{ form.project_manager.id_for_label }}').focus();
+            return false;
+        }
+        
+        // Check Sales Percentage
+        if (!salesPercentage || salesPercentage === '') {
+            e.preventDefault();
+            alert('Please enter Sales Percentage. This field is required.');
+            document.getElementById('{{ form.sales_percentage.id_for_label }}').focus();
+            return false;
+        }
+        
+        // Check Project Manager Percentage
+        if (!projectManagerPercentage || projectManagerPercentage === '') {
+            e.preventDefault();
+            alert('Please enter Project Manager Percentage. This field is required.');
+            document.getElementById('{{ form.project_manager_percentage.id_for_label }}').focus();
+            return false;
+        }
+        
         const items = getItemsData();
         
         console.log('Form submission - Items data:', items);

@@ -2,6 +2,71 @@
 
 {% block body_class %}simple-form-page{% endblock %}
 
+{% block extra_css %}
+<style>
+/* Remove required asterisk from User is Active checkbox */
+.form-check-label[for*="is_active"]::after {
+    content: none !important;
+}
+
+/* Ensure checkbox labels don't show required indicators */
+.form-check-container .form-check-label::after {
+    content: none !important;
+}
+
+/* Custom compact buttons - override all existing styles */
+.form-actions .btn-primary,
+.form-actions .btn-secondary {
+    padding: 8px 20px !important;
+    font-size: 14px !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    max-height: 36px !important;
+    line-height: 1.2 !important;
+    border-radius: 6px !important;
+    font-weight: 500 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    white-space: nowrap !important;
+}
+
+/* Specific styling for primary button */
+.form-actions .btn-primary {
+    background-color: #007bff !important;
+    border-color: #007bff !important;
+    color: white !important;
+}
+
+.form-actions .btn-primary:hover {
+    background-color: #0056b3 !important;
+    border-color: #0056b3 !important;
+}
+
+/* Specific styling for secondary button */
+.form-actions .btn-secondary {
+    background-color: #6c757d !important;
+    border-color: #6c757d !important;
+    color: white !important;
+}
+
+.form-actions .btn-secondary:hover {
+    background-color: #545b62 !important;
+    border-color: #545b62 !important;
+}
+
+/* Form actions container */
+.form-actions {
+    display: grid;
+    gap: 12px !important;
+    align-items: center !important;
+    margin-top: 24px !important;
+    padding-top: 16px !important;
+    border-top: 1px solid #e9ecef !important;
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="simple-form-wrapper">
     <!-- Simple Header -->
@@ -76,6 +141,24 @@
                     {% if form.role.errors %}
                         <div class="error-msg">{{ form.role.errors.0 }}</div>
                     {% endif %}
+                </div>
+            </div>
+
+            <!-- User Status -->
+            <div class="form-row">
+                <div class="form-group">
+                    <div class="form-check-container">
+                        <div class="form-check">
+                            {{ form.is_active }}
+                            <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+                                User is Active
+                            </label>
+                        </div>
+                        <small class="form-text text-muted">{{ form.is_active.help_text }}</small>
+                        {% if form.is_active.errors %}
+                            <div class="error-msg">{{ form.is_active.errors.0 }}</div>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
 

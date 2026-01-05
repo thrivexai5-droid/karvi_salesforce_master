@@ -82,9 +82,9 @@
 
     <!-- Large Card - Bottom Right -->
     <div class="card stats-card large-card shadow-sm border-0">
-        <div class="card-body">
-            <h6 class="card-title fw-bold mb-4  text-center">TASK</h6>
-            <div class="stats-grid">
+        <div class="card-body d-flex flex-column">
+            <h6 class="card-title fw-bold mb-3 text-center">TASK</h6>
+            <div class="stats-grid flex-grow-1" style="max-height: 400px; overflow-y: auto;">
                 <div class="activity-item mb-3 pb-3 border-bottom">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
@@ -122,7 +122,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="activity-item">
+                <div class="activity-item mb-3 pb-3 border-bottom">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <strong>Target Date</strong>
@@ -132,6 +132,43 @@
                             <div class="fw-bold text-{{ sustainability_color }}">
                                 {% if sustainability_days > 0 %}{{ sustainance_date }}{% else %}Today{% endif %}
                             </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Additional admin tasks -->
+                <div class="activity-item mb-3 pb-3 border-bottom">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>Total Users</strong>
+                            <small class="d-block text-muted">Active system users</small>
+                        </div>
+                        <div class="text-end">
+                            <div class="fw-bold">25</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="activity-item mb-3 pb-3 border-bottom">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>System Health</strong>
+                            <small class="d-block text-muted">Overall system status</small>
+                        </div>
+                        <div class="text-end">
+                            <div class="fw-bold text-success">Good</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="activity-item">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>Backup Status</strong>
+                            <small class="d-block text-muted">Last backup completed</small>
+                        </div>
+                        <div class="text-end">
+                            <div class="fw-bold text-success">Today</div>
                         </div>
                     </div>
                 </div>

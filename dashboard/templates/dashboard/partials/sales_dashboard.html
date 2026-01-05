@@ -8,46 +8,48 @@
         <!-- Running Projects Card -->
         <div class="col-3">
             <div class="card h-100 dashboard-card">
-                <div class="card-body p-3">
+                <div class="card-body p-3 d-flex flex-column">
                     <h5 class="fw-semibold fs-5 mb-3 dashboard-label text-center">Running Projects</h5>
                     
-                    <!-- Quotations Table -->
-                    <div class="table-responsive" style="max-height: 380px; overflow-y: auto;">
-                        <table class="table table-sm table-borderless">
-                            <thead>
-                                <tr class="border-bottom">
-                                    <th class="fw-semibold text-muted" style="font-size: 0.8rem;">Pro No</th>
-                                    <th class="fw-semibold text-muted" style="font-size: 0.8rem;">Company</th>
-                                    <th class="fw-semibold text-muted" style="font-size: 0.8rem;">Customer</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% if recent_quotations %}
-                                    {% for quote in recent_quotations %}
-                                    <tr>
-                                        <td class="fw-semibold" style="font-size: 0.85rem;">{{ quote.quote_no }}</td>
-                                        <td class="text-muted" style="font-size: 0.85rem;">
-                                            {% if quote.company.company %}
-                                                {{ quote.company.company.company_name|truncatechars:12 }}
-                                            {% else %}
-                                                {{ quote.company.customer_name|truncatechars:12 }}
-                                            {% endif %}
-                                        </td>
-                                        <td class="text-muted" style="font-size: 0.85rem;">{{ quote.customer_name|truncatechars:12 }}</td>
+                    <!-- Quotations Table with Fixed Height -->
+                    <div class="flex-grow-1 d-flex flex-column">
+                        <div class="table-responsive flex-grow-1" style="max-height: 300px; overflow-y: auto;">
+                            <table class="table table-sm table-borderless">
+                                <thead class="sticky-top bg-white">
+                                    <tr class="border-bottom">
+                                        <th class="fw-semibold text-muted" style="font-size: 0.8rem;">Pro No</th>
+                                        <th class="fw-semibold text-muted" style="font-size: 0.8rem;">Company</th>
+                                        <th class="fw-semibold text-muted" style="font-size: 0.8rem;">Customer</th>
                                     </tr>
-                                    {% endfor %}
-                                {% else %}
-                                    <!-- No quotations found message -->
-                                    <tr>
-                                        <td colspan="3" class="text-center text-muted" style="font-size: 0.85rem; padding: 2rem;">
-                                            No running projects found.
-                                            <br>
-                                            <small>Active inquiries will appear here.</small>
-                                        </td>
-                                    </tr>
-                                {% endif %}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {% if recent_quotations %}
+                                        {% for quote in recent_quotations %}
+                                        <tr>
+                                            <td class="fw-semibold" style="font-size: 0.85rem;">{{ quote.quote_no }}</td>
+                                            <td class="text-muted" style="font-size: 0.85rem;">
+                                                {% if quote.company.company %}
+                                                    {{ quote.company.company.company_name|truncatechars:12 }}
+                                                {% else %}
+                                                    {{ quote.company.customer_name|truncatechars:12 }}
+                                                {% endif %}
+                                            </td>
+                                            <td class="text-muted" style="font-size: 0.85rem;">{{ quote.customer_name|truncatechars:12 }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    {% else %}
+                                        <!-- No quotations found message -->
+                                        <tr>
+                                            <td colspan="3" class="text-center text-muted" style="font-size: 0.85rem; padding: 2rem;">
+                                                No running projects found.
+                                                <br>
+                                                <small>Active inquiries will appear here.</small>
+                                            </td>
+                                        </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                     
                     <!-- Total Count -->
@@ -136,44 +138,65 @@
     <div class="row g-3" style="min-height: 55vh;">
         <!-- Financial Sustai Card -->
         <div class="col-3">
-            <div class="card h-80 dashboard-card">
-                <div class="card-body p-3 ">
-                    <h3 class="fw-semibold fs-5 mb-4 dashboard-label text-center">TASK</h3>
+            <div class="card h-100 dashboard-card">
+                <div class="card-body p-3 d-flex flex-column">
+                    <h3 class="fw-semibold fs-5 mb-3 dashboard-label text-center">TASK</h3>
                     
-                    <!-- Net Revenue -->
-                    <div class="d-flex justify-content-between align-items-start mb-3">
-                        <div>
-                            <div class="fw-semibold fs-6 dashboard-label">Net Revenue</div>
-                            <div class="text-muted fs-6" style="font-size: 0.8rem;">Total Invoice - Fixed Costs + Additional</div>
+                    <!-- Scrollable Content Area -->
+                    <div class="flex-grow-1" style="max-height: 350px; overflow-y: auto;">
+                        <!-- Net Revenue -->
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div>
+                                <div class="fw-semibold fs-6 dashboard-label">Net Revenue</div>
+                                <div class="text-muted fs-6" style="font-size: 0.8rem;">Total Invoice - Fixed Costs + Additional</div>
+                            </div>
+                            <div class="fw-bold fs-6 dashboard-number">-₹1,944,181</div>
                         </div>
-                        <div class="fw-bold fs-6 dashboard-number">-₹1,944,181</div>
-                    </div>
-                    
-                    <!-- Monthly Expenses -->
-                    <div class="d-flex justify-content-between align-items-start mb-3">
-                        <div>
-                            <div class="fw-semibold fs-6 dashboard-label">Monthly Expenses</div>
-                            <div class="text-muted fs-6" style="font-size: 0.8rem;">₹7,636/day burn rate</div>
+                        
+                        <!-- Monthly Expenses -->
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div>
+                                <div class="fw-semibold fs-6 dashboard-label">Monthly Expenses</div>
+                                <div class="text-muted fs-6" style="font-size: 0.8rem;">₹7,636/day burn rate</div>
+                            </div>
+                            <div class="fw-bold fs-6 dashboard-number">₹229,083</div>
                         </div>
-                        <div class="fw-bold fs-6 dashboard-number">₹229,083</div>
-                    </div>
-                    
-                    <!-- Sustainability Period -->
-                    <div class="d-flex justify-content-between align-items-start mb-3">
-                        <div>
-                            <div class="fw-semibold fs-6 dashboard-label">Sustainability Period</div>
-                            <div class="text-muted fs-6" style="font-size: 0.8rem;">Days business can sustain (Critical)</div>
+                        
+                        <!-- Sustainability Period -->
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div>
+                                <div class="fw-semibold fs-6 dashboard-label">Sustainability Period</div>
+                                <div class="text-muted fs-6" style="font-size: 0.8rem;">Days business can sustain (Critical)</div>
+                            </div>
+                            <div class="fw-bold fs-6 text-danger">Critical</div>
                         </div>
-                        <div class="fw-bold fs-6 text-danger">Critical</div>
-                    </div>
-                    
-                    <!-- Target Date -->
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <div class="fw-semibold fs-6 dashboard-label">Target Date</div>
-                            <div class="text-muted fs-6" style="font-size: 0.8rem;">Immediate action required</div>
+                        
+                        <!-- Target Date -->
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div>
+                                <div class="fw-semibold fs-6 dashboard-label">Target Date</div>
+                                <div class="text-muted fs-6" style="font-size: 0.8rem;">Immediate action required</div>
+                            </div>
+                            <div class="fw-bold fs-6 dashboard-number">Today</div>
                         </div>
-                        <div class="fw-bold fs-6 dashboard-number">Today</div>
+                        
+                        <!-- Add more task items here if needed -->
+                        <!-- Example additional tasks -->
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div>
+                                <div class="fw-semibold fs-6 dashboard-label">Pending Invoices</div>
+                                <div class="text-muted fs-6" style="font-size: 0.8rem;">Invoices awaiting payment</div>
+                            </div>
+                            <div class="fw-bold fs-6 dashboard-number">12</div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div>
+                                <div class="fw-semibold fs-6 dashboard-label">Overdue Orders</div>
+                                <div class="text-muted fs-6" style="font-size: 0.8rem;">Orders past delivery date</div>
+                            </div>
+                            <div class="fw-bold fs-6 text-warning">5</div>
+                        </div>
                     </div>
                 </div>
             </div>

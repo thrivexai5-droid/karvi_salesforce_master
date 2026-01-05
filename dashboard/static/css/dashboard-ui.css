@@ -93,3 +93,50 @@
 .running-projects-table td:nth-child(3) {
     width: 30%;
 }
+/*
+ Custom scrollbar styling for dashboard cards */
+.dashboard-card .table-responsive::-webkit-scrollbar,
+.dashboard-card div[style*="overflow-y: auto"]::-webkit-scrollbar {
+    width: 6px;
+}
+
+.dashboard-card .table-responsive::-webkit-scrollbar-track,
+.dashboard-card div[style*="overflow-y: auto"]::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.dashboard-card .table-responsive::-webkit-scrollbar-thumb,
+.dashboard-card div[style*="overflow-y: auto"]::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.dashboard-card .table-responsive::-webkit-scrollbar-thumb:hover,
+.dashboard-card div[style*="overflow-y: auto"]::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Ensure sticky headers work properly */
+.table thead.sticky-top {
+    z-index: 10;
+}
+
+/* Fixed height cards with proper flex layout */
+.dashboard-card .card-body.d-flex.flex-column {
+    height: 100%;
+}
+
+.dashboard-card .flex-grow-1 {
+    flex: 1;
+    min-height: 0; /* Important for proper scrolling */
+}
+
+/* Smooth scrolling */
+.dashboard-card .table-responsive,
+.dashboard-card div[style*="overflow-y: auto"] {
+    scroll-behavior: smooth;
+}
+
+/* Global Search Styling - Now handled in header-redesign.css */
+/* All global search styles have been moved to header-redesign.css for better integration */

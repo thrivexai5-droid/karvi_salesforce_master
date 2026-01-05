@@ -120,6 +120,13 @@ def extract_po_data_from_pdf(pdf_file):
         
         # Combine markdown text from all pages
         full_text = "\n\n".join([page.markdown for page in ocr_response.pages])
+        
+        # Check if we got any text from OCR
+        if not full_text or full_text.strip() == "":
+            return {
+                'error': 'No text could be extracted from the PDF. The file may be corrupted, password-protected, or contain only images.',
+                'success': False
+            }
 
     except Exception as ocr_error:
         print(f"OCR Error: {ocr_error}")
@@ -135,24 +142,27 @@ def extract_po_data_from_pdf(pdf_file):
                 'error': 'Mistral API key does not have OCR permissions. Please check your API key permissions at https://console.mistral.ai/',
                 'success': False
             }
+        elif "400" in error_msg or "invalid" in error_msg.lower() or "document" in error_msg.lower():
+            return {
+                'error': 'The uploaded PDF file appears to be corrupted or invalid. Please try uploading a different PDF file.',
+                'success': False
+            }
         else:
             return {
                 'error': f'OCR processing failed: {str(ocr_error)}',
                 'success': False
             }
 
-    # 2. Field Extraction: Enhanced prompt for comprehensive PO data extraction
+    # 2. Field Extraction: Focused prompt for essential PO data only
     try:
         system_prompt = (
-            "You are a Purchase Order data extraction specialist. Extract the following fields into a JSON object:\n\n"
+            "You are a Purchase Order data extraction specialist. Extract ONLY the following essential fields into a JSON object:\n\n"
             "MAIN FIELDS:\n"
-            "- po_number: Purchase Order number/reference\n"
+            "- po_number: Purchase Order number/reference only\n"
             "- po_date: PO date (format YYYY-MM-DD)\n"
-            "- customer_name: Customer/buyer company name\n"
             "- net_value: Total net value/amount (number only, no currency)\n"
             "- delivery_date: Required delivery date (format YYYY-MM-DD)\n"
-            "- payment_terms: Payment terms in days only (extract number, e.g., '45 days' -> 45)\n"
-            "- remarks: Any additional notes or remarks\n\n"
+            "- payment_terms: Payment terms in days only (extract number, e.g., '45 days' -> 45)\n\n"
             "ITEMS ARRAY:\n"
             "- items: Array of line items, each containing:\n"
             "  - material_code: Item/material code or SKU\n"
@@ -161,11 +171,14 @@ def extract_po_data_from_pdf(pdf_file):
             "  - unit_price: Price per unit (number only)\n"
             "  - line_total: Total for this line item (number only)\n\n"
             "EXTRACTION RULES:\n"
-            "1. If a field is not found, use empty string for text fields, 0 for numbers, empty array for items\n"
-            "2. For dates, use YYYY-MM-DD format only\n"
-            "3. For numbers, extract only numeric values without currency symbols\n"
-            "4. Extract ALL line items found in the document\n"
-            "5. Material codes might be labeled as: Item Code, SKU, Part Number, Material Code, etc.\n"
+            "1. DO NOT extract customer names, company names, or buyer information\n"
+            "2. DO NOT extract terms & conditions, GST information, or general remarks\n"
+            "3. ONLY extract essential PO data: PO number, dates, amounts, and item details\n"
+            "4. If a field is not found, use empty string for text fields, 0 for numbers, empty array for items\n"
+            "5. For dates, use YYYY-MM-DD format only\n"
+            "6. For numbers, extract only numeric values without currency symbols\n"
+            "7. Extract ALL line items found in the document\n"
+            "8. Material codes might be labeled as: Item Code, SKU, Part Number, Material Code, etc.\n"
             "6. Quantities might have units (pcs, kg, etc.) - extract only the number\n"
             "7. Look for tables or structured data for line items\n\n"
             "OUTPUT: Valid JSON object only, no additional text."
@@ -191,15 +204,13 @@ def extract_po_data_from_pdf(pdf_file):
             'success': False
         }
     
-    # Post-process the data to ensure consistency
+    # Post-process the data to ensure consistency (removed customer_name and remarks)
     processed_data = {
         "po_number": extracted_data.get("po_number", ""),
         "po_date": extracted_data.get("po_date", ""),
-        "customer_name": extracted_data.get("customer_name", ""),
         "net_value": extracted_data.get("net_value", 0),
         "delivery_date": extracted_data.get("delivery_date", ""),
         "payment_terms": extract_payment_days(extracted_data.get("payment_terms", "")),
-        "remarks": extracted_data.get("remarks", ""),
         "items": extracted_data.get("items", [])
     }
     

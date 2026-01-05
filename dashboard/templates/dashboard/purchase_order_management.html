@@ -45,7 +45,7 @@
         </div>
         <a href="{% url 'dashboard:purchase_order_create' %}" class="btn btn-primary add-po-btn">
             <i class="bi bi-plus-circle"></i>
-            <span>Create New PO</span>
+            <span>Create PO</span>
         </a>
     </div>
 
@@ -62,7 +62,7 @@
         </div>
         <div class="stat-card">
             <div class="stat-icon" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
-                <i class="bi bi-currency-dollar"></i>
+                <i class="bi bi-currency-rupee"></i>
             </div>
             <div class="stat-content">
                 <h3>₹{{ total_value|floatformat:0 }}</h3>
@@ -271,7 +271,7 @@
                 </p>
                 <a href="{% url 'dashboard:purchase_order_create' %}" class="btn btn-primary add-po-btn">
                     <i class="bi bi-plus-circle"></i>
-                    <span>Create New PO</span>
+                    <span>Create PO</span>
                 </a>
             </div>
         {% endif %}
