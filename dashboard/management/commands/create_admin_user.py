@@ -8,11 +8,11 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         # User details
-        username = 'pranav'
-        email = 'pranav@karvienc.com'
-        first_name = 'Pranav'
-        last_name = 'Parikhrole'
-        phone = '7600053567'
+        username = 'kush'
+        email = 'kush@karvienc.com'
+        first_name = 'kush'
+        last_name = 'Patel'
+        phone = '7600953567'
         password = 'Darshan@1234'
         
         try:

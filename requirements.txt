@@ -1,109 +1,86 @@
 # KARVI Dashboard Project - Requirements
-# Django Business Management System
-# Last Updated: December 29, 2025
+# Django Business Management System for PythonAnywhere Deployment
+# Last Updated: January 6, 2026
 
 # Core Framework
-Django==6.0
-asgiref==3.11.0
-sqlparse==0.5.5
-tzdata==2025.3
+Django==5.1.4
+asgiref==3.8.1
+sqlparse==0.5.2
+tzdata==2024.2
 
 # PostgreSQL Database Adapter
-psycopg2-binary==2.9.10
-
-# Image Processing
-Pillow==12.0.0
-
-# Document Processing
-python-docx==1.2.0
-lxml==6.0.2
-reportlab==4.4.7
-weasyprint==67.0
-
-# PDF Processing Dependencies
-pydyf==0.12.1
-pyphen==0.17.2
-tinycss2==1.5.1
-tinyhtml5==2.0.0
-webencodings==0.5.1
-cssselect2==0.8.0
-fonttools==4.61.1
-brotli==1.2.0
-zopfli==0.4.0
-
-# AI/ML Integration
-mistralai==1.10.0
-pydantic==2.12.5
-pydantic_core==2.41.5
-
-# Database Adapters
 psycopg2-binary==2.9.9
 
+# Static Files Handling for Production
+whitenoise==6.8.2
+
+# Image Processing
+Pillow==11.0.0
+
+# Document Processing
+python-docx==1.1.2
+lxml==5.3.0
+reportlab==4.2.5
+weasyprint==63.0
+
+# PDF Processing Dependencies
+pydyf==0.11.0
+pyphen==0.15.0
+tinycss2==1.4.0
+tinyhtml5==2.0.0
+webencodings==0.5.1
+cssselect2==0.7.0
+fonttools==4.55.3
+brotli==1.1.0
+
+# AI/ML Integration
+mistralai==1.2.4
+pydantic==2.10.3
+pydantic_core==2.27.1
+
 # Environment Management
-python-dotenv==1.2.1
+python-dotenv==1.0.1
 
 # HTTP Requests
-requests==2.32.5
-urllib3==2.6.2
+requests==2.32.3
+urllib3==2.2.3
 httpx==0.28.1
-httpcore==1.0.9
-h11==0.16.0
-anyio==4.12.0
-certifi==2025.11.12
-charset-normalizer==3.4.4
+httpcore==1.0.7
+h11==0.14.0
+anyio==4.7.0
+certifi==2024.12.14
+charset-normalizer==3.4.0
+idna==3.10
 
 # Utilities
 python-dateutil==2.9.0.post0
 six==1.17.0
-packaging==25.0
-MarkupSafe==3.0.3
-Jinja2==3.1.6
-colorama==0.4.6
-
-# OpenTelemetry (Monitoring)
-opentelemetry-api==1.38.0
-opentelemetry-sdk==1.38.0
-opentelemetry-exporter-otlp-proto-http==1.38.0
-opentelemetry-exporter-otlp-proto-common==1.38.0
-opentelemetry-proto==1.38.0
-opentelemetry-semantic-conventions==0.59b0
-googleapis-common-protos==1.72.0
-protobuf==6.33.2
-
-# Development & Testing
-pytest==9.0.2
-hypothesis==6.148.8
-pluggy==1.6.0
-iniconfig==2.3.0
-sortedcontainers==2.4.0
+packaging==24.2
+MarkupSafe==3.0.2
+Jinja2==3.1.4
 
 # Type Checking
-typing_extensions==4.15.0
-typing-inspection==0.4.2
-annotated-types==0.7.0
-eval_type_backport==0.3.1
+typing_extensions==4.12.2
 
 # Build Tools
-invoke==2.2.1
-PyYAML==6.0.3
+setuptools==75.6.0
+wheel==0.45.1
 
-# Syntax Highlighting
-Pygments==2.19.2
+# Installation Instructions for PythonAnywhere:
+# 1. Upload your project files to PythonAnywhere
+# 2. Open a Bash console on PythonAnywhere
+# 3. Create virtual environment: python3.10 -m venv venv
+# 4. Activate virtual environment: source venv/bin/activate
+# 5. Install requirements: pip install -r requirements.txt
+# 6. Set up PostgreSQL database in PythonAnywhere dashboard
+# 7. Update .env file with PythonAnywhere database credentials
+# 8. Run migrations: python manage.py migrate
+# 9. Collect static files: python manage.py collectstatic
+# 10. Create superuser: python manage.py createsuperuser
+# 11. Configure WSGI file in Web tab
 
-# Cryptography
-pycparser==2.23
-cffi==2.0.0
-
-# Metadata
-importlib_metadata==8.7.1
-zipp==3.23.0
-
-# Installation Instructions:
-# 1. Create virtual environment: python -m venv venv
-# 2. Activate virtual environment: 
-#    - Windows: venv\Scripts\activate
-#    - Linux/Mac: source venv/bin/activate
-# 3. Install requirements: pip install -r requirements.txt
-# 4. Run migrations: python manage.py migrate
-# 5. Create superuser: python manage.py createsuperuser
-# 6. Run server: python manage.py runserver
+# PythonAnywhere Specific Notes:
+# - Use PostgreSQL database (included in paid plans)
+# - Static files are handled by WhiteNoise
+# - Make sure to set DEBUG=False in production
+# - Update ALLOWED_HOSTS with your PythonAnywhere domain
