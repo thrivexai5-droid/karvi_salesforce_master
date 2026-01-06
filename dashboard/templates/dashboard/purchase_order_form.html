@@ -50,7 +50,7 @@
                     <div class="user-initial">{{ order_obj.po_number|first|upper }}</div>
                     <div>
                         <strong>Editing PO: {{ order_obj.po_number }}</strong>
-                        <div class="text-muted">Company: {{ order_obj.company.company }} | Value: ₹{{ order_obj.order_value }}</div>
+                        <div class="text-muted">Company: {{ order_obj.company.company.company_name }} | Value: ₹{{ order_obj.order_value }}</div>
                     </div>
                 </div>
             {% endif %}
@@ -560,14 +560,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initialize if editing existing order
     {% if is_edit and order_obj %}
-        companyDisplay.value = '{{ order_obj.company.company_name }}';
+        companyDisplay.value = '{{ order_obj.company.company.company_name }}';
         companyDisplay.style.backgroundColor = '#e8f5e8';
         
         // Set selected customer for editing
         selectedCustomer = {
             id: {{ order_obj.company.id }},
-            customer_name: '{{ order_obj.company.customer_name }}',
-            company_name: '{{ order_obj.company.company_name }}'
+            customer_name: '{{ order_obj.customer_name }}',
+            company_name: '{{ order_obj.company.company.company_name }}'
         };
         
         calculateDates();

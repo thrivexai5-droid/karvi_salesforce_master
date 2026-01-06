@@ -320,10 +320,9 @@ def search_customers_ajax(request):
         return JsonResponse({'success': True, 'customers': []})
     
     try:
-        # Search in customer_name and contact_name fields
+        # Search in customer_name field only (contact_name doesn't exist anymore)
         customers = Contact.objects.filter(
-            models.Q(customer_name__icontains=query) |
-            models.Q(contact_name__icontains=query)
+            customer_name__icontains=query
         ).select_related('company').order_by('customer_name')[:10]  # Limit to 10 results
         
         customers_data = []
@@ -331,7 +330,6 @@ def search_customers_ajax(request):
             customers_data.append({
                 'id': customer.id,
                 'customer_name': customer.customer_name,
-                'contact_name': customer.contact_name,
                 'company_name': customer.company.company_name if customer.company else '',
                 'display_text': f"{customer.customer_name} - {customer.company.company_name if customer.company else 'No Company'}"
             })
@@ -661,7 +659,6 @@ def get_full_dashboard_data():
     
     # Alternative interpretation: if formatted_total_sales is different from invoice total
     # You can modify this calculation based on your specific requirements
-    
     # Calculate sustainability metrics
     from .services import calculate_sustainability_date
     sustainability_data = calculate_sustainability_date()
@@ -1392,12 +1389,11 @@ class ContactForm(forms.ModelForm):
     
     class Meta:
         model = Contact
-        fields = ['contact_name', 'email_1', 'phone_1', 'phone_2', 'company', 'individual_address']
+        fields = ['customer_name', 'email', 'phone', 'company', 'individual_address']
         widgets = {
-            'contact_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter client name'}),
-            'email_1': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Enter email address'}),
-            'phone_1': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter phone number'}),
-            'phone_2': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter secondary phone number (optional)'}),
+            'customer_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter customer name'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Enter email address'}),
+            'phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter phone number'}),
             'individual_address': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Enter personal address'}),
         }
     
@@ -1410,14 +1406,8 @@ class ContactForm(forms.ModelForm):
         if self.instance and self.instance.pk and self.instance.company:
             self.fields['company'].initial = self.instance.company
     
-    def clean_phone_1(self):
-        phone = self.cleaned_data.get('phone_1')
-        if phone and not phone.replace('+', '').replace('-', '').replace(' ', '').replace('(', '').replace(')', '').isdigit():
-            raise forms.ValidationError("Please enter a valid phone number.")
-        return phone
-    
-    def clean_phone_2(self):
-        phone = self.cleaned_data.get('phone_2')
+    def clean_phone(self):
+        phone = self.cleaned_data.get('phone')
         if phone and not phone.replace('+', '').replace('-', '').replace(' ', '').replace('(', '').replace(')', '').isdigit():
             raise forms.ValidationError("Please enter a valid phone number.")
         return phone
@@ -1458,11 +1448,9 @@ def contact_management_view(request):
         
         if search_query:
             contacts = contacts.filter(
-                Q(contact_name__icontains=search_query) |
                 Q(customer_name__icontains=search_query) |
-                Q(email_1__icontains=search_query) |
-                Q(email_2__icontains=search_query) |
-                Q(phone_1__icontains=search_query) |
+                Q(email__icontains=search_query) |
+                Q(phone__icontains=search_query) |
                 Q(company__company_name__icontains=search_query) |
                 Q(location_city__icontains=search_query)
             )
@@ -1895,12 +1883,9 @@ def get_contact_data_ajax(request):
         return JsonResponse({
             'success': True,
             'contact_id': contact.id,
-            'contact_name': contact.contact_name,
             'customer_name': contact.customer_name,
-            'email_1': contact.email_1,
-            'email_2': contact.email_2 or '',
-            'phone_1': contact.phone_1,
-            'phone_2': contact.phone_2 or '',
+            'email': contact.email,
+            'phone': contact.phone,
             'company_id': contact.company.id if contact.company else None,
             'company_name': contact.company.company_name if contact.company else '',
             'location_city': contact.location_city,
@@ -2597,7 +2582,7 @@ class InquiryHandlerForm(forms.ModelForm):
             instance.company = selected_contact  # Set the company relationship
             
             # Ensure customer_name is properly set (fallback to contact_name if customer_name is empty)
-            customer_name = selected_contact.customer_name or selected_contact.contact_name
+            customer_name = selected_contact.customer_name
             instance.customer_name = customer_name
         
         if commit:
@@ -3297,12 +3282,12 @@ def fetch_quotation_data_ajax(request):
                 
                 # Extract customer data
                 customer_data = {
-                    'to_person': inquiry.company.contact_name,
+                    'to_person': inquiry.customer_name,
                     'firm': inquiry.company.company.company_name if inquiry.company.company else '',
                     'address': company_address,
                     'customer_name': inquiry.customer_name,
-                    'email': inquiry.company.email_1 if inquiry.company.email_1 else inquiry.company.email,
-                    'phone': inquiry.company.phone_1,
+                    'email': inquiry.company.email if inquiry.company.email else '',
+                    'phone': inquiry.company.phone,
                     'status': inquiry.status,
                     'date_of_quote': inquiry.date_of_quote.strftime('%Y-%m-%d') if inquiry.date_of_quote else '',
                     'address_source': address_source,
@@ -4027,6 +4012,11 @@ def insert_images_in_inclusion_section(doc, fixtures_data):
 @login_required
 def quotation_view(request):
     """Quotation generator page with draft loading capability"""
+    from datetime import datetime
+    
+    # Get current date in the required format
+    current_date = datetime.now().strftime('%A, %B %d, %Y')
+    
     # Check for specific draft ID in URL parameter
     draft_id = request.GET.get('draft_id')
     draft_data = None
@@ -4133,7 +4123,8 @@ def quotation_view(request):
     
     return render(request, 'dashboard/quotation_generator.html', {
         'draft_data': draft_data,
-        'draft_data_json': draft_data_json
+        'draft_data_json': draft_data_json,
+        'current_date': current_date
     })
 
 def handle_multiple_products_in_sections(doc, fixtures):
@@ -5648,8 +5639,8 @@ def get_user_names_api(request):
 def get_contact_names_api(request):
     """API endpoint to get contact names for searchable input"""
     try:
-        # Get all contact names from the Contact model
-        contacts = Contact.objects.all().values_list('contact_name', flat=True)
+        # Get all customer names from the Contact model
+        contacts = Contact.objects.all().values_list('customer_name', flat=True)
         contact_names = list(contacts)
         
         return JsonResponse(contact_names, safe=False)
@@ -5689,8 +5680,8 @@ def get_inquiry_search_data_api(request):
                 search_data.append(inquiry.quote_no)
             
             # Add company name
-            if inquiry.company and inquiry.company.contact_name:
-                search_data.append(inquiry.company.contact_name)
+            if inquiry.company and inquiry.company.customer_name:
+                search_data.append(inquiry.company.customer_name)
             
             # Add customer name
             if inquiry.customer_name:
@@ -5749,8 +5740,8 @@ def get_purchase_order_search_data_api(request):
                 search_data.append(order.customer_name)
             
             # Add company name
-            if order.company and order.company.contact_name:
-                search_data.append(order.company.contact_name)
+            if order.company and order.company.customer_name:
+                search_data.append(order.company.customer_name)
             
             # Add sales person
             if order.sales_person:
@@ -5783,8 +5774,8 @@ def get_invoice_search_data_api(request):
                 search_data.append(invoice.customer_name)
             
             # Add company name
-            if invoice.company and invoice.company.contact_name:
-                search_data.append(invoice.company.contact_name)
+            if invoice.company and invoice.company.customer_name:
+                search_data.append(invoice.company.customer_name)
         
         # Remove duplicates and return
         unique_data = list(set(search_data))
@@ -5808,8 +5799,8 @@ def get_additional_supply_search_data_api(request):
                 search_data.append(supply.invoice.customer_name)
             
             # Add company name
-            if supply.invoice and supply.invoice.company and supply.invoice.company.contact_name:
-                search_data.append(supply.invoice.company.contact_name)
+            if supply.invoice and supply.invoice.company and supply.invoice.company.customer_name:
+                search_data.append(supply.invoice.company.customer_name)
             
             # Add description
             if supply.description:
@@ -6210,16 +6201,15 @@ def global_search_ajax(request):
         
         # Search Contacts
         contacts = Contact.objects.filter(
-            Q(contact_name__icontains=query) |
             Q(customer_name__icontains=query) |
             Q(company__company_name__icontains=query) |
-            Q(email_1__icontains=query)
+            Q(email__icontains=query)
         ).select_related('company')[:5]
         
         for contact in contacts:
             results.append({
-                'title': f'Contact: {contact.contact_name or contact.customer_name}',
-                'subtitle': f'{contact.company.company_name if contact.company else "No Company"} - {contact.email_1}',
+                'title': f'Contact: {contact.customer_name}',
+                'subtitle': f'{contact.company.company_name if contact.company else "No Company"} - {contact.email}',
                 'module': 'Contacts',
                 'url': f'/contacts/edit/{contact.id}/'
             })

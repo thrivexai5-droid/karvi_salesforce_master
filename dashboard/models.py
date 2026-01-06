@@ -101,17 +101,11 @@ class Company(models.Model):
 class Contact(models.Model):
     """Contact model with enhanced fields and Company relationship"""
     
-    # Client/Contact Name - Required
-    contact_name = models.CharField(max_length=200, verbose_name="Client/Contact Name")
+    # Email Address - Single email field
+    email = models.EmailField(verbose_name="Email Address", blank=True, null=True)
     
-    # Email Addresses - Allow two emails
-    email_1 = models.EmailField(verbose_name="Primary Email Address")
-    email_2 = models.EmailField(verbose_name="Secondary Email Address", blank=True, null=True)
-    
-    # Phone Numbers - Allow three phone numbers
-    phone_1 = models.CharField(max_length=20, verbose_name="Primary Phone Number")
-    phone_2 = models.CharField(max_length=20, verbose_name="Secondary Phone Number", blank=True, null=True)
-    phone_3 = models.CharField(max_length=20, verbose_name="Tertiary Phone Number", blank=True, null=True)
+    # Phone Number - Single phone field
+    phone = models.CharField(max_length=20, verbose_name="Phone Number", blank=True, null=True)
     
     # Company - Foreign Key relationship (dropdown only)
     company = models.ForeignKey(Company, on_delete=models.CASCADE, verbose_name="Company")
@@ -120,7 +114,7 @@ class Contact(models.Model):
     location_city = models.CharField(max_length=100, verbose_name="Location (City)", blank=True)
     
     # Individual Address - Manual text input (separate from company address)
-    individual_address = models.TextField(verbose_name="Individual Address")
+    individual_address = models.TextField(verbose_name="Individual Address", blank=True, null=True)
     
     # Legacy fields for backward compatibility (will be migrated)
     customer_name = models.CharField(max_length=200, verbose_name="Customer Name", blank=True, null=True)
@@ -137,38 +131,14 @@ class Contact(models.Model):
         if self.company:
             self.location_city = self.company.get_primary_city()
         
-        # Maintain backward compatibility
-        if not self.customer_name:
-            self.customer_name = self.contact_name
-        
-        # Populate legacy email field for backward compatibility
-        if not self.email and self.email_1:
-            self.email = self.email_1
-        
         super().save(*args, **kwargs)
-    
-    def get_emails_list(self):
-        """Return list of non-empty emails"""
-        emails = [self.email_1]
-        if self.email_2:
-            emails.append(self.email_2)
-        return emails
-    
-    def get_phones_list(self):
-        """Return list of non-empty phone numbers"""
-        phones = [self.phone_1]
-        if self.phone_2:
-            phones.append(self.phone_2)
-        if self.phone_3:
-            phones.append(self.phone_3)
-        return phones
     
     def get_primary_email(self):
         """Return primary email for backward compatibility"""
-        return self.email_1
+        return self.email
     
     def __str__(self):
-        return f"{self.contact_name} - {self.company.company_name}"
+        return f"{self.customer_name} - {self.company.company_name}"
     
     class Meta:
         verbose_name = "Contact"
@@ -697,15 +667,6 @@ class InquiryHandler(models.Model):
         help_text="Enter remarks manually (optional)"
     )
     
-    # 10. BA - Manual entry (kept for backward compatibility)
-    ba = models.CharField(
-        max_length=100,
-        verbose_name="BA (Business Analyst)",
-        help_text="Enter BA name manually",
-        blank=True,
-        null=True
-    )
-    
     # 10a. Sales - Dropdown selection (replaces BA in form)
     sales = models.ForeignKey(
         User,
@@ -724,7 +685,6 @@ class InquiryHandler(models.Model):
         verbose_name="Next Date",
         help_text="Enter next date manually (optional)"
     )
-    
     # 11. Additional Supply Remarks - Manual entry (for Additional Supply page)
     remarks_add = models.TextField(
         blank=True,
@@ -760,8 +720,8 @@ class InquiryHandler(models.Model):
         
         # Auto-fetch customer name from selected company
         if self.company:
-            # Ensure customer_name is properly set (fallback to contact_name if customer_name is empty)
-            customer_name = self.company.customer_name or self.company.contact_name
+            # Set customer_name from the selected contact
+            customer_name = self.company.customer_name
             self.customer_name = customer_name
         
         # Auto-generate Opportunity ID based on status
@@ -940,6 +900,7 @@ class InquiryItem(models.Model):
         verbose_name = "Inquiry Item"
         verbose_name_plural = "Inquiry Items"
         ordering = ['id']
+
 
 class Quotation(models.Model):
     STATUS_CHOICES = [

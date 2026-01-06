@@ -18,9 +18,9 @@ class CompanyAdmin(admin.ModelAdmin):
 
 @admin.register(Contact)
 class ContactAdmin(admin.ModelAdmin):
-    list_display = ['contact_name', 'company', 'location_city', 'email_1', 'phone_1', 'created_at']
+    list_display = ['customer_name', 'company', 'location_city', 'email', 'phone', 'created_at']
     list_filter = ['location_city', 'company', 'created_at']
-    search_fields = ['contact_name', 'company__company_name', 'email_1', 'phone_1']
+    search_fields = ['customer_name', 'company__company_name', 'email', 'phone']
     readonly_fields = ['location_city', 'created_at', 'updated_at']
 
 class PurchaseOrderItemInline(admin.TabularInline):
@@ -32,7 +32,7 @@ class PurchaseOrderItemInline(admin.TabularInline):
 class PurchaseOrderAdmin(admin.ModelAdmin):
     list_display = ['id', 'po_number', 'company', 'customer_name', 'order_value', 'order_date', 'delivery_date', 'payment_terms_display', 'get_status']
     list_filter = ['order_date', 'delivery_date', 'payment_terms', 'created_at']
-    search_fields = ['po_number', 'customer_name', 'company__company']
+    search_fields = ['po_number', 'customer_name', 'company__customer_name']
     readonly_fields = ['customer_name', 'delivery_date', 'due_days']
     inlines = [PurchaseOrderItemInline]
     
@@ -66,13 +66,13 @@ class PurchaseOrderItemAdmin(admin.ModelAdmin):
 class InvoiceAdmin(admin.ModelAdmin):
     list_display = ['invoice_number', 'company', 'customer_name', 'order_value', 'invoice_date', 'payment_due_date', 'get_payment_status']
     list_filter = ['invoice_date', 'grn_date', 'payment_due_date', 'created_at']
-    search_fields = ['invoice_number', 'customer_name', 'company__company', 'purchase_order__po_number']
+    search_fields = ['invoice_number', 'customer_name', 'company__customer_name', 'purchase_order__po_number']
     readonly_fields = ['customer_name', 'order_value', 'payment_due_date', 'due_days']
 
 @admin.register(InquiryHandler)
 class InquiryHandlerAdmin(admin.ModelAdmin):
-    list_display = ['create_id', 'opportunity_id', 'status', 'company', 'customer_name', 'quote_no', 'date_of_quote', 'ba']
+    list_display = ['create_id', 'opportunity_id', 'status', 'company', 'customer_name', 'quote_no', 'date_of_quote', 'sales']
     list_filter = ['status', 'date_of_quote', 'created_at']
-    search_fields = ['create_id', 'opportunity_id', 'quote_no', 'customer_name', 'company__company', 'ba']
+    search_fields = ['create_id', 'opportunity_id', 'quote_no', 'customer_name', 'company__company_name', 'sales__username']
     readonly_fields = ['create_id', 'opportunity_id', 'customer_name', 'quote_no']
     ordering = ['-created_at']

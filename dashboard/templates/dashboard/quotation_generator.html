@@ -69,7 +69,7 @@
                         <label for="date">
                             <i class="bi bi-calendar"></i> Date
                         </label>
-                        <input type="text" id="date" name="date" class="form-control" value="Wednesday, September 24, 2025" placeholder="Wednesday, September 24, 2025">
+                        <input type="text" id="date" name="date" class="form-control" value="{{ draft_data.date|default:current_date }}" placeholder="{{ current_date }}">
                         <small class="form-text"><i class="bi bi-calendar-event"></i> Quotation date</small>
                     </div>
                 </div>
@@ -247,14 +247,14 @@ function createFixtureHTML(index) {
                     </div>
                     <div class="form-group">
                         <label>Total Price</label>
-                        <input type="text" class="form-control" name="fixtures[${index}][total]" value="${defaultData.total}">
+                        <input type="text" class="form-control" name="fixtures[${index}][total]" value="${defaultData.total}" oninput="convertToWords(${index})">
                     </div>
                 </div>
                 
                 <div class="form-row">
                     <div class="form-group">
                         <label>Price in Words</label>
-                        <input type="text" class="form-control" name="fixtures[${index}][words]" value="${defaultData.words}">
+                        <input type="text" class="form-control" name="fixtures[${index}][words]" value="${defaultData.words}" readonly style="background-color: #f8f9fa;">
                     </div>
                 </div>
                 
@@ -279,6 +279,99 @@ function createFixtureHTML(index) {
             </div>
         </div>
     `;
+}
+
+// Number to words conversion function
+function numberToWords(num) {
+    if (num === 0) return 'Zero';
+    
+    const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+    const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+    const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+    
+    function convertHundreds(n) {
+        let result = '';
+        if (n >= 100) {
+            result += ones[Math.floor(n / 100)] + ' Hundred ';
+            n %= 100;
+        }
+        if (n >= 20) {
+            result += tens[Math.floor(n / 10)] + ' ';
+            n %= 10;
+        } else if (n >= 10) {
+            result += teens[n - 10] + ' ';
+            return result;
+        }
+        if (n > 0) {
+            result += ones[n] + ' ';
+        }
+        return result;
+    }
+    
+    // Handle Indian numbering system (Lakhs and Crores)
+    let result = '';
+    let crores = Math.floor(num / 10000000);
+    if (crores > 0) {
+        result += convertHundreds(crores) + 'Crore ';
+        num %= 10000000;
+    }
+    
+    let lakhs = Math.floor(num / 100000);
+    if (lakhs > 0) {
+        result += convertHundreds(lakhs) + 'Lakh ';
+        num %= 100000;
+    }
+    
+    let thousands = Math.floor(num / 1000);
+    if (thousands > 0) {
+        result += convertHundreds(thousands) + 'Thousand ';
+        num %= 1000;
+    }
+    
+    if (num > 0) {
+        result += convertHundreds(num);
+    }
+    
+    return result.trim();
+}
+
+// Convert price to words with currency
+function convertPriceToWords(amount) {
+    if (!amount || isNaN(amount) || amount <= 0) {
+        return '';
+    }
+    
+    const numAmount = parseFloat(amount);
+    const rupees = Math.floor(numAmount);
+    const paise = Math.round((numAmount - rupees) * 100);
+    
+    let result = '';
+    if (rupees > 0) {
+        result += numberToWords(rupees) + ' Rupees';
+    }
+    
+    if (paise > 0) {
+        if (result) result += ' and ';
+        result += numberToWords(paise) + ' Paise';
+    }
+    
+    return result + ' Only';
+}
+
+// Convert total price to words
+function convertToWords(index) {
+    const totalInput = document.querySelector(`input[name="fixtures[${index}][total]"]`);
+    const wordsInput = document.querySelector(`input[name="fixtures[${index}][words]"]`);
+    
+    if (totalInput && wordsInput) {
+        const total = totalInput.value.trim();
+        if (total && !isNaN(total) && parseFloat(total) > 0) {
+            const words = convertPriceToWords(parseFloat(total));
+            wordsInput.value = words;
+        } else {
+            wordsInput.value = '';
+        }
+    }
 }
 
 function addFixture() {

@@ -156,9 +156,9 @@
                                 <td>
                                     <div>{{ order.delivery_date|date:"M d, Y" }}</div>
                                     {% if order.due_days is not None %}
-                                        <small class="text-muted">
+                                        <!-- <small class="text-muted">
                                             {{ order.get_due_days_display }}
-                                        </small>
+                                        </small> -->
                                     {% endif %}
                                 </td>
                                 <td>

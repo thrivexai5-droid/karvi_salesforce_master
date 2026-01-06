@@ -63,19 +63,13 @@
 
     <!-- Search Section -->
     <div class="search-section">
-        <div class="d-flex gap-3 align-items-center">
-            <form method="GET" class="search-input-group flex-grow-1">
-                <i class="bi bi-search"></i>
-                <input type="text" 
-                       name="search" 
-                       class="form-control" 
-                       placeholder="Search by quote number, customer, or contact person..." 
-                       value="{{ search_query }}">
-                <button type="submit" class="btn btn-outline-primary">Search</button>
-                {% if search_query %}
-                    <a href="{% url 'dashboard:quotation_management' %}" class="btn btn-outline-secondary">Clear</a>
-                {% endif %}
-            </form>
+        <div class="search-container">
+            <div class="input-group">
+                <span class="input-group-text">
+                    <i class="bi bi-search"></i>
+                </span>
+                <input type="text" class="form-control" id="searchInput" placeholder="Search quotations...">
+            </div>
         </div>
     </div>
 
@@ -88,8 +82,8 @@
         
         {% if quotations %}
             <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
+                <table class="table table-hover" id="quotationsTable">
+                    <thead class="table-light">
                         <tr>
                             <th>#</th>
                             <th>Quote Number</th>
@@ -155,55 +149,11 @@
                 </table>
             </div>
 
-            <!-- Pagination -->
-            {% if quotations.has_other_pages %}
-                <div class="pagination-container">
-                    <nav aria-label="Quotations pagination">
-                        <ul class="pagination justify-content-center mb-0">
-                            {% if quotations.has_previous %}
-                                <li class="page-item">
-                                    <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}">First</a>
-                                </li>
-                                <li class="page-item">
-                                    <a class="page-link" href="?page={{ quotations.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">Previous</a>
-                                </li>
-                            {% endif %}
-
-                            {% for num in quotations.paginator.page_range %}
-                                {% if quotations.number == num %}
-                                    <li class="page-item active">
-                                        <span class="page-link">{{ num }}</span>
-                                    </li>
-                                {% elif num > quotations.number|add:'-3' and num < quotations.number|add:'3' %}
-                                    <li class="page-item">
-                                        <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}">{{ num }}</a>
-                                    </li>
-                                {% endif %}
-                            {% endfor %}
-
-                            {% if quotations.has_next %}
-                                <li class="page-item">
-                                    <a class="page-link" href="?page={{ quotations.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">Next</a>
-                                </li>
-                                <li class="page-item">
-                                    <a class="page-link" href="?page={{ quotations.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}">Last</a>
-                                </li>
-                            {% endif %}
-                        </ul>
-                    </nav>
-                </div>
-            {% endif %}
         {% else %}
             <div class="empty-state">
                 <i class="bi bi-file-earmark-text text-muted"></i>
                 <h4 class="text-muted">No quotations found</h4>
-                <p class="text-muted">
-                    {% if search_query %}
-                        No quotations match your search criteria.
-                    {% else %}
-                        Start by generating your first quotation.
-                    {% endif %}
-                </p>
+                <p class="text-muted">Start by generating your first quotation.</p>
                 <a href="{% url 'dashboard:quotation_generator' %}" class="btn btn-primary">
                     <i class="bi bi-plus-circle me-2"></i>Generate Quotation
                 </a>
@@ -212,16 +162,79 @@
     </div>
 </div>
 
+<!-- Simple Table Search Script -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Auto-focus search input
-    const searchInput = document.querySelector('input[name="search"]');
-    if (searchInput && !searchInput.value) {
-        searchInput.focus();
+    // Simple table search functionality
+    const searchInput = document.getElementById('searchInput');
+    const table = document.getElementById('quotationsTable');
+    const tbody = table.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+
+    if (searchInput && table) {
+        searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase().trim();
+            
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                if (text.includes(searchTerm)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+            
+            // Update visible count
+            const visibleRows = rows.filter(row => row.style.display !== 'none');
+            console.log(`Showing ${visibleRows.length} of ${rows.length} quotations`);
+        });
     }
+
+    // Add sorting functionality to table headers
+    const headers = table.querySelectorAll('th');
+    headers.forEach((header, index) => {
+        if (index < headers.length - 1) { // Don't make Actions column sortable
+            header.style.cursor = 'pointer';
+            header.addEventListener('click', function() {
+                sortTable(table, index);
+            });
+        }
+    });
 });
+
+function sortTable(table, columnIndex) {
+    const tbody = table.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    const isAscending = table.getAttribute('data-sort-order') !== 'asc';
+    
+    rows.sort((a, b) => {
+        const aText = a.cells[columnIndex].textContent.trim();
+        const bText = b.cells[columnIndex].textContent.trim();
+        
+        // Try to parse as numbers first
+        const aNum = parseFloat(aText);
+        const bNum = parseFloat(bText);
+        
+        if (!isNaN(aNum) && !isNaN(bNum)) {
+            return isAscending ? aNum - bNum : bNum - aNum;
+        }
+        
+        // Sort as strings
+        return isAscending ? aText.localeCompare(bText) : bText.localeCompare(aText);
+    });
+    
+    // Clear tbody and append sorted rows
+    tbody.innerHTML = '';
+    rows.forEach(row => tbody.appendChild(row));
+    
+    // Update sort order attribute
+    table.setAttribute('data-sort-order', isAscending ? 'asc' : 'desc');
+    
+    // Update header indicators
+    const headers = table.querySelectorAll('th');
+    headers.forEach(h => h.classList.remove('sorted-asc', 'sorted-desc'));
+    headers[columnIndex].classList.add(isAscending ? 'sorted-asc' : 'sorted-desc');
+}
 </script>
-
-
 
 {% endblock %}

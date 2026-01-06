@@ -22,10 +22,10 @@
             {% if is_edit and contact_obj %}
                 <div class="edit-indicator">
                     <div class="user-initial">
-                        {{ contact_obj.contact_name|first|upper }}
+                        {{ contact_obj.customer_name|first|upper }}
                     </div>
                     <div>
-                        <strong>Editing Contact: {{ contact_obj.contact_name }}</strong>
+                        <strong>Editing Contact: {{ contact_obj.customer_name }}</strong>
                         <div class="text-muted">Company: {{ contact_obj.company.company_name }} | Location: {{ contact_obj.location_city }}</div>
                     </div>
                 </div>
@@ -36,45 +36,34 @@
                 
                 <!-- Client Name -->
                 <div class="form-group compact">
-                    <label for="{{ form.contact_name.id_for_label }}">
+                    <label for="{{ form.customer_name.id_for_label }}">
                         <i class="bi bi-person-fill"></i> Client Name
                     </label>
-                    {{ form.contact_name }}
-                    {% if form.contact_name.errors %}
-                        <div class="error-msg">{{ form.contact_name.errors.0 }}</div>
+                    {{ form.customer_name }}
+                    {% if form.customer_name.errors %}
+                        <div class="error-msg">{{ form.customer_name.errors.0 }}</div>
                     {% endif %}
                 </div>
 
                 <!-- Email Address -->
                 <div class="form-group compact">
-                    <label for="{{ form.email_1.id_for_label }}">
+                    <label for="{{ form.email.id_for_label }}">
                         <i class="bi bi-envelope-fill"></i> Email Address
                     </label>
-                    {{ form.email_1 }}
-                    {% if form.email_1.errors %}
-                        <div class="error-msg">{{ form.email_1.errors.0 }}</div>
+                    {{ form.email }}
+                    {% if form.email.errors %}
+                        <div class="error-msg">{{ form.email.errors.0 }}</div>
                     {% endif %}
                 </div>
 
                 <!-- Phone Number -->
                 <div class="form-group compact">
-                    <label for="{{ form.phone_1.id_for_label }}">
+                    <label for="{{ form.phone.id_for_label }}">
                         <i class="bi bi-telephone-fill"></i> Phone Number
                     </label>
-                    {{ form.phone_1 }}
-                    {% if form.phone_1.errors %}
-                        <div class="error-msg">{{ form.phone_1.errors.0 }}</div>
-                    {% endif %}
-                </div>
-
-                <!-- Secondary Phone Number -->
-                <div class="form-group compact">
-                    <label for="{{ form.phone_2.id_for_label }}">
-                        <i class="bi bi-telephone"></i> Secondary Phone Number
-                    </label>
-                    {{ form.phone_2 }}
-                    {% if form.phone_2.errors %}
-                        <div class="error-msg">{{ form.phone_2.errors.0 }}</div>
+                    {{ form.phone }}
+                    {% if form.phone.errors %}
+                        <div class="error-msg">{{ form.phone.errors.0 }}</div>
                     {% endif %}
                 </div>
 
