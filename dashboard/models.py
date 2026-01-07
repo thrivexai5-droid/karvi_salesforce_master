@@ -620,6 +620,18 @@ class InquiryHandler(models.Model):
         blank=True
     )
     
+    # Computed fields for ordering (will be populated automatically)
+    year_month_order = models.CharField(
+        max_length=10,
+        blank=True,
+        help_text="Computed field for month-wise ordering (YYYY-MM format)"
+    )
+    
+    serial_number = models.IntegerField(
+        default=0,
+        help_text="Serial number extracted from create_id for ordering within month"
+    )
+    
     # 4. Lead Description - Manual entry (removed from form, made optional)
     lead_description = models.TextField(
         verbose_name="Lead Description",
@@ -730,7 +742,33 @@ class InquiryHandler(models.Model):
         # Set Quote Number to be the same as Create ID
         self.quote_no = self.create_id
         
+        # Populate ordering fields from create_id
+        self.populate_ordering_fields()
+        
         super().save(*args, **kwargs)
+    
+    def populate_ordering_fields(self):
+        """Extract year, month, and serial number from create_id for proper ordering"""
+        if self.create_id:
+            import re
+            # Pattern: KEC + number + month + year (e.g., KEC013JA2026)
+            match = re.match(r'KEC(\d+)([A-Z]{2})(\d{4})', self.create_id)
+            if match:
+                serial_num = int(match.group(1))
+                month_code = match.group(2)
+                year = int(match.group(3))
+                
+                # Month code mapping
+                month_map = {
+                    'JA': 1, 'FE': 2, 'MR': 3, 'AP': 4, 'MY': 5, 'JN': 6,
+                    'JL': 7, 'AU': 8, 'SE': 9, 'OC': 10, 'NO': 11, 'DE': 12
+                }
+                
+                month = month_map.get(month_code, 1)
+                
+                # Set ordering fields
+                self.year_month_order = f"{year}-{month:02d}"
+                self.serial_number = serial_num
     
     def generate_create_id(self):
         """Generate Create ID: KEC + serial + month + year (e.g., KEC020JY2025)"""
@@ -843,7 +881,7 @@ class InquiryHandler(models.Model):
     class Meta:
         verbose_name = "Inquiry Handler"
         verbose_name_plural = "Inquiry Handlers"
-        ordering = ['-created_at']
+        ordering = ['-year_month_order', '-serial_number']
 
 
 class InquiryItem(models.Model):

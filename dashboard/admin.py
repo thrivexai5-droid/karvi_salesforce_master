@@ -75,4 +75,4 @@ class InquiryHandlerAdmin(admin.ModelAdmin):
     list_filter = ['status', 'date_of_quote', 'created_at']
     search_fields = ['create_id', 'opportunity_id', 'quote_no', 'customer_name', 'company__company_name', 'sales__username']
     readonly_fields = ['create_id', 'opportunity_id', 'customer_name', 'quote_no']
-    ordering = ['-created_at']
+    ordering = ['-year_month_order', '-serial_number']

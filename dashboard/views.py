@@ -2716,7 +2716,7 @@ def inquiry_handler_management_view(request):
             Q(sales__username__icontains=search_query)
         )
     
-    inquiries = inquiries.order_by('-created_at')
+    inquiries = inquiries.order_by('-year_month_order', '-serial_number')
     
     # Pagination
     paginator = Paginator(inquiries, 10)
